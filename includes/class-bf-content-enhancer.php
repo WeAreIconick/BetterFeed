@@ -57,6 +57,18 @@ class BF_Content_Enhancer {
         // Add custom feed elements
         add_action('rss2_item', array($this, 'add_custom_rss_elements'));
         add_action('atom_entry', array($this, 'add_custom_atom_elements'));
+        
+        // Enclosure length auto-detection
+        add_action('rss2_item', array($this, 'fix_enclosure_lengths'));
+        add_action('atom_entry', array($this, 'fix_atom_enclosure_lengths'));
+        
+        // Responsive images
+        add_action('rss2_item', array($this, 'add_responsive_images'));
+        add_action('atom_entry', array($this, 'add_responsive_images_atom'));
+        
+        // Google Discover optimization
+        add_action('rss2_item', array($this, 'add_google_discover_tags'));
+        add_action('atom_entry', array($this, 'add_google_discover_tags_atom'));
     }
     
     /**
@@ -581,5 +593,611 @@ class BF_Content_Enhancer {
         if ($language) {
             echo '<dc:language>' . esc_html($language) . '</dc:language>' . "\n";
         }
+    }
+    
+    /**
+     * Fix enclosure lengths in RSS2 feeds
+     */
+    public function fix_enclosure_lengths() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if enclosure fix is enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_enclosure_fix'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        // Get enclosures from post content
+        $enclosures = $this->get_post_enclosures($post_id);
+        
+        foreach ($enclosures as $enclosure) {
+            $file_size = $this->get_file_size($enclosure['url']);
+            if ($file_size > 0) {
+                echo '<enclosure url="' . esc_url($enclosure['url']) . '" length="' . esc_attr($file_size) . '" type="' . esc_attr($enclosure['type']) . '" />' . "\n";
+            }
+        }
+    }
+    
+    /**
+     * Fix enclosure lengths in Atom feeds
+     */
+    public function fix_atom_enclosure_lengths() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if enclosure fix is enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_enclosure_fix'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        // Get enclosures from post content
+        $enclosures = $this->get_post_enclosures($post_id);
+        
+        foreach ($enclosures as $enclosure) {
+            $file_size = $this->get_file_size($enclosure['url']);
+            if ($file_size > 0) {
+                echo '<link rel="enclosure" type="' . esc_attr($enclosure['type']) . '" length="' . esc_attr($file_size) . '" href="' . esc_url($enclosure['url']) . '" />' . "\n";
+            }
+        }
+    }
+    
+    /**
+     * Get enclosures from post content
+     */
+    private function get_post_enclosures($post_id) {
+        $enclosures = array();
+        
+        // Check for audio/video URLs in content
+        $content = get_post_field('post_content', $post_id);
+        $post_meta = get_post_meta($post_id, 'episode_audio_url', true);
+        
+        // Audio URLs from post meta (podcast episodes)
+        if (!empty($post_meta)) {
+            if (is_numeric($post_meta)) {
+                // Attachment ID
+                $attachment_url = wp_get_attachment_url($post_meta);
+                if ($attachment_url) {
+                    $mime_type = get_post_mime_type($post_meta);
+                    $enclosures[] = array(
+                        'url' => $attachment_url,
+                        'type' => $mime_type ?: 'audio/mpeg'
+                    );
+                }
+            } else {
+                // Direct URL
+                $mime_type = $this->get_url_mime_type($post_meta);
+                $enclosures[] = array(
+                    'url' => $post_meta,
+                    'type' => $mime_type ?: 'audio/mpeg'
+                );
+            }
+        }
+        
+        // Extract audio/video URLs from content
+        $url_pattern = '/https?:\/\/[^\s<>"]+\.(mp3|mp4|m4a|wav|ogg|webm)(\?[^\s<>"]*)?/i';
+        preg_match_all($url_pattern, $content, $matches);
+        
+        if (!empty($matches[0])) {
+            foreach ($matches[0] as $url) {
+                $mime_type = $this->get_url_mime_type($url);
+                $enclosures[] = array(
+                    'url' => $url,
+                    'type' => $mime_type ?: 'audio/mpeg'
+                );
+            }
+        }
+        
+        return $enclosures;
+    }
+    
+    /**
+     * Get file size via HTTP HEAD request
+     */
+    private function get_file_size($url) {
+        // Check cache first
+        $cache_key = 'bf_file_size_' . md5($url);
+        $cached_size = get_transient($cache_key);
+        
+        if ($cached_size !== false) {
+            return $cached_size;
+        }
+        
+        // Make HEAD request to get file size
+        $response = wp_remote_head($url, array(
+            'timeout' => 10,
+            'redirection' => 5,
+            'user-agent' => 'BetterFeed/1.0 (+https://wordpress.org/plugins/betterfeed/)'
+        ));
+        
+        if (is_wp_error($response)) {
+            return 0;
+        }
+        
+        $headers = wp_remote_retrieve_headers($response);
+        $content_length = $headers->offsetGet('content-length');
+        
+        if ($content_length) {
+            $file_size = (int) $content_length;
+            // Cache for 24 hours
+            set_transient($cache_key, $file_size, DAY_IN_SECONDS);
+            return $file_size;
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Get MIME type from URL
+     */
+    private function get_url_mime_type($url) {
+        $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+        $extension = strtolower($extension);
+        
+        $mime_types = array(
+            'mp3' => 'audio/mpeg',
+            'mp4' => 'video/mp4',
+            'm4a' => 'audio/mp4',
+            'wav' => 'audio/wav',
+            'ogg' => 'audio/ogg',
+            'webm' => 'video/webm',
+            'avi' => 'video/avi',
+            'mov' => 'video/quicktime'
+        );
+        
+        return isset($mime_types[$extension]) ? $mime_types[$extension] : 'application/octet-stream';
+    }
+    
+    /**
+     * Add responsive images to RSS2 feeds
+     */
+    public function add_responsive_images() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if responsive images are enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_responsive_images'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        if (!$featured_image_id) {
+            return;
+        }
+        
+        // Get image sizes
+        $image_sizes = $this->get_image_sizes($featured_image_id);
+        
+        if (!empty($image_sizes)) {
+            // Add Media RSS namespace
+            echo 'xmlns:media="http://search.yahoo.com/mrss/"' . "\n";
+            
+            foreach ($image_sizes as $size) {
+                echo '<media:content url="' . esc_url($size['url']) . '" type="' . esc_attr($size['mime_type']) . '" medium="image"';
+                if ($size['width']) {
+                    echo ' width="' . esc_attr($size['width']) . '"';
+                }
+                if ($size['height']) {
+                    echo ' height="' . esc_attr($size['height']) . '"';
+                }
+                echo ' />' . "\n";
+            }
+        }
+    }
+    
+    /**
+     * Add responsive images to Atom feeds
+     */
+    public function add_responsive_images_atom() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if responsive images are enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_responsive_images'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        if (!$featured_image_id) {
+            return;
+        }
+        
+        // Get image sizes
+        $image_sizes = $this->get_image_sizes($featured_image_id);
+        
+        if (!empty($image_sizes)) {
+            foreach ($image_sizes as $size) {
+                echo '<link rel="enclosure" type="' . esc_attr($size['mime_type']) . '" href="' . esc_url($size['url']) . '"';
+                if ($size['width']) {
+                    echo ' width="' . esc_attr($size['width']) . '"';
+                }
+                if ($size['height']) {
+                    echo ' height="' . esc_attr($size['height']) . '"';
+                }
+                echo ' />' . "\n";
+            }
+        }
+    }
+    
+    /**
+     * Get responsive image sizes for featured image
+     */
+    private function get_image_sizes($attachment_id) {
+        $sizes = array();
+        
+        // Get available image sizes
+        $image_sizes = array('thumbnail', 'medium', 'large', 'full');
+        
+        foreach ($image_sizes as $size) {
+            $image_data = wp_get_attachment_image_src($attachment_id, $size);
+            if ($image_data) {
+                $sizes[] = array(
+                    'url' => $image_data[0],
+                    'width' => $image_data[1],
+                    'height' => $image_data[2],
+                    'mime_type' => get_post_mime_type($attachment_id)
+                );
+            }
+        }
+        
+        // Add srcset for modern browsers
+        $srcset = wp_get_attachment_image_srcset($attachment_id, 'full');
+        if ($srcset) {
+            // Parse srcset to get individual URLs
+            $srcset_parts = explode(', ', $srcset);
+            foreach ($srcset_parts as $part) {
+                $part_data = explode(' ', trim($part));
+                if (count($part_data) >= 2) {
+                    $url = $part_data[0];
+                    $descriptor = $part_data[1];
+                    
+                    // Get dimensions for this URL
+                    $image_info = wp_get_attachment_metadata($attachment_id);
+                    if ($image_info && isset($image_info['sizes'])) {
+                        foreach ($image_info['sizes'] as $size_name => $size_data) {
+                            $size_url = wp_get_attachment_image_src($attachment_id, $size_name)[0];
+                            if ($size_url === $url) {
+                                $sizes[] = array(
+                                    'url' => $url,
+                                    'width' => $size_data['width'],
+                                    'height' => $size_data['height'],
+                                    'mime_type' => get_post_mime_type($attachment_id)
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Remove duplicates
+        $unique_sizes = array();
+        foreach ($sizes as $size) {
+            $key = $size['url'] . '_' . $size['width'] . '_' . $size['height'];
+            if (!isset($unique_sizes[$key])) {
+                $unique_sizes[$key] = $size;
+            }
+        }
+        
+        return array_values($unique_sizes);
+    }
+    
+    /**
+     * Add Google Discover optimization tags to RSS2 feeds
+     */
+    public function add_google_discover_tags() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if Google Discover optimization is enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_google_discover'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        // Add schema.org Article markup
+        $this->add_article_schema($post_id);
+        
+        // Ensure large featured image for Google Discover
+        $this->add_large_featured_image($post_id);
+        
+        // Add author and publication information
+        $this->add_author_publication_info($post_id);
+    }
+    
+    /**
+     * Add Google Discover optimization tags to Atom feeds
+     */
+    public function add_google_discover_tags_atom() {
+        // Check if BetterFeed is enabled
+        $general_options = get_option('bf_general_options', array());
+        if (empty($general_options['enable_betterfeed'])) {
+            return;
+        }
+        
+        // Check if Google Discover optimization is enabled
+        $performance_options = get_option('bf_performance_options', array());
+        if (empty($performance_options['enable_google_discover'])) {
+            return;
+        }
+        
+        $post_id = get_the_ID();
+        if (!$post_id) {
+            return;
+        }
+        
+        // Add schema.org Article markup (JSON-LD)
+        echo '<script type="application/ld+json">' . $this->get_article_schema_json($post_id) . '</script>' . "\n";
+        
+        // Ensure large featured image for Google Discover
+        $this->add_large_featured_image_atom($post_id);
+    }
+    
+    /**
+     * Add schema.org Article markup for RSS2
+     */
+    private function add_article_schema($post_id) {
+        $schema = $this->get_article_schema_data($post_id);
+        
+        if (!$schema) {
+            return;
+        }
+        
+        // Add JSON-LD script tag
+        echo '<script type="application/ld+json">' . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>' . "\n";
+    }
+    
+    /**
+     * Get article schema JSON for Atom feeds
+     */
+    private function get_article_schema_json($post_id) {
+        $schema = $this->get_article_schema_data($post_id);
+        
+        if (!$schema) {
+            return '';
+        }
+        
+        return wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Get article schema.org data
+     */
+    private function get_article_schema_data($post_id) {
+        $post = get_post($post_id);
+        if (!$post) {
+            return null;
+        }
+        
+        $author = get_userdata($post->post_author);
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        $categories = get_the_category($post_id);
+        $tags = get_the_tags($post_id);
+        
+        $schema = array(
+            '@context' => 'https://schema.org',
+            '@type' => 'Article',
+            'headline' => get_the_title($post_id),
+            'description' => wp_strip_all_tags(get_the_excerpt($post_id)),
+            'url' => get_permalink($post_id),
+            'datePublished' => get_post_time('c', true, $post_id),
+            'dateModified' => get_post_modified_time('c', true, $post_id),
+            'author' => array(
+                '@type' => 'Person',
+                'name' => $author ? $author->display_name : 'Unknown',
+                'url' => $author ? get_author_posts_url($author->ID) : ''
+            ),
+            'publisher' => array(
+                '@type' => 'Organization',
+                'name' => get_bloginfo('name'),
+                'url' => home_url('/'),
+                'logo' => array(
+                    '@type' => 'ImageObject',
+                    'url' => $this->get_site_logo_url()
+                )
+            ),
+            'mainEntityOfPage' => array(
+                '@type' => 'WebPage',
+                '@id' => get_permalink($post_id)
+            )
+        );
+        
+        // Add featured image if available and meets Google Discover requirements
+        if ($featured_image_id) {
+            $image_data = $this->get_large_image_data($featured_image_id);
+            if ($image_data && $image_data['width'] >= 1200) {
+                $schema['image'] = array(
+                    '@type' => 'ImageObject',
+                    'url' => $image_data['url'],
+                    'width' => $image_data['width'],
+                    'height' => $image_data['height']
+                );
+            }
+        }
+        
+        // Add categories
+        if (!empty($categories)) {
+            $schema['articleSection'] = array();
+            foreach ($categories as $category) {
+                $schema['articleSection'][] = $category->name;
+            }
+        }
+        
+        // Add tags as keywords
+        if (!empty($tags)) {
+            $keywords = array();
+            foreach ($tags as $tag) {
+                $keywords[] = $tag->name;
+            }
+            $schema['keywords'] = implode(', ', $keywords);
+        }
+        
+        // Add word count for content quality signals
+        $word_count = str_word_count(wp_strip_all_tags(get_the_content(null, false, $post_id)));
+        if ($word_count > 0) {
+            $schema['wordCount'] = $word_count;
+        }
+        
+        return $schema;
+    }
+    
+    /**
+     * Ensure large featured image for Google Discover (RSS2)
+     */
+    private function add_large_featured_image($post_id) {
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        if (!$featured_image_id) {
+            return;
+        }
+        
+        $image_data = $this->get_large_image_data($featured_image_id);
+        if (!$image_data) {
+            return;
+        }
+        
+        // Google Discover requires images to be at least 1200px wide
+        if ($image_data['width'] >= 1200) {
+            echo '<media:content url="' . esc_url($image_data['url']) . '" type="' . esc_attr($image_data['mime_type']) . '" medium="image" width="' . esc_attr($image_data['width']) . '" height="' . esc_attr($image_data['height']) . '" />' . "\n";
+        }
+    }
+    
+    /**
+     * Ensure large featured image for Google Discover (Atom)
+     */
+    private function add_large_featured_image_atom($post_id) {
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        if (!$featured_image_id) {
+            return;
+        }
+        
+        $image_data = $this->get_large_image_data($featured_image_id);
+        if (!$image_data) {
+            return;
+        }
+        
+        // Google Discover requires images to be at least 1200px wide
+        if ($image_data['width'] >= 1200) {
+            echo '<link rel="enclosure" type="' . esc_attr($image_data['mime_type']) . '" href="' . esc_url($image_data['url']) . '" width="' . esc_attr($image_data['width']) . '" height="' . esc_attr($image_data['height']) . '" />' . "\n";
+        }
+    }
+    
+    /**
+     * Get large image data suitable for Google Discover
+     */
+    private function get_large_image_data($attachment_id) {
+        // Try to get the largest available image
+        $image_sizes = array('full', 'large', 'medium_large', 'medium');
+        
+        foreach ($image_sizes as $size) {
+            $image_data = wp_get_attachment_image_src($attachment_id, $size);
+            if ($image_data && $image_data[1] >= 1200) {
+                return array(
+                    'url' => $image_data[0],
+                    'width' => $image_data[1],
+                    'height' => $image_data[2],
+                    'mime_type' => get_post_mime_type($attachment_id)
+                );
+            }
+        }
+        
+        // If no large image available, return the largest we have
+        $image_data = wp_get_attachment_image_src($attachment_id, 'full');
+        if ($image_data) {
+            return array(
+                'url' => $image_data[0],
+                'width' => $image_data[1],
+                'height' => $image_data[2],
+                'mime_type' => get_post_mime_type($attachment_id)
+            );
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Add author and publication information for Google Discover
+     */
+    private function add_author_publication_info($post_id) {
+        $author_id = get_post_field('post_author', $post_id);
+        $author = get_userdata($author_id);
+        
+        if ($author) {
+            echo '<dc:creator><![CDATA[' . esc_html($author->display_name) . ']]></dc:creator>' . "\n";
+        }
+        
+        // Add publication date in ISO format
+        echo '<dc:date>' . esc_html(get_post_time('c', true, $post_id)) . '</dc:date>' . "\n";
+        
+        // Add modification date
+        echo '<dc:modified>' . esc_html(get_post_modified_time('c', true, $post_id)) . '</dc:modified>' . "\n";
+    }
+    
+    /**
+     * Get site logo URL
+     */
+    private function get_site_logo_url() {
+        $custom_logo_id = get_theme_mod('custom_logo');
+        if ($custom_logo_id) {
+            $logo_url = wp_get_attachment_image_url($custom_logo_id, 'full');
+            if ($logo_url) {
+                return $logo_url;
+            }
+        }
+        
+        // Fallback to site icon
+        $site_icon_id = get_option('site_icon');
+        if ($site_icon_id) {
+            $icon_url = wp_get_attachment_image_url($site_icon_id, 'full');
+            if ($icon_url) {
+                return $icon_url;
+            }
+        }
+        
+        // Final fallback
+        return home_url('/wp-content/uploads/logo.png');
     }
 }

@@ -92,8 +92,8 @@ echo ""
 # 1. JavaScript Syntax Validation
 TESTS_RAN=$((TESTS_RAN + 1))
 print_test_header "JavaScript Syntax Validation"
-if [ -f "./testing/validate-js.sh" ]; then
-    ./testing/validate-js.sh 2>&1 | tee -a "$RESULTS_LOG"
+if [ -f "./developer-tools/testing/validate-js.sh" ]; then
+    ./developer-tools/testing/validate-js.sh 2>&1 | tee -a "$RESULTS_LOG"
     JS_RESULT=$?
     print_test_result $JS_RESULT "JavaScript Validation"
     if [ $JS_RESULT -eq 0 ]; then
@@ -109,8 +109,8 @@ fi
 # 2. Advanced JavaScript Error Prevention (NEW!)
 TESTS_RAN=$((TESTS_RAN + 1))
 print_test_header "Advanced JavaScript Error Prevention"
-if [ -f "./testing/advanced-js-monitor.js" ]; then
-    node ./testing/advanced-js-monitor.js 2>&1 | tee -a "$RESULTS_LOG"
+if [ -f "./developer-tools/testing/advanced-js-monitor.js" ]; then
+    node ./developer-tools/testing/advanced-js-monitor.js 2>&1 | tee -a "$RESULTS_LOG"
     ADV_JS_RESULT=$?
     print_test_result $ADV_JS_RESULT "Advanced JS Error Prevention"
     if [ $ADV_JS_RESULT -eq 0 ]; then
@@ -126,15 +126,15 @@ fi
 # 3. REST API Testing
 TESTS_RAN=$((TESTS_RAN + 1))
 print_test_header "REST API Endpoint Validation"
-if [ -f "./testing/test-rest-api.sh" ]; then
-    ./testing/test-rest-api.sh "$BASE_URL" 2>&1 | tee -a "$RESULTS_LOG"
+if [ -f "./developer-tools/testing/test-rest-api.sh" ]; then
+    ./developer-tools/testing/test-rest-api.sh "$BASE_URL" 2>&1 | tee -a "$RESULTS_LOG"
     REST_RESULT=$?
     print_test_result $REST_RESULT "REST API Testing"
     if [ $REST_RESULT -eq 0 ]; then
         TESTS_PASSED=$((TESTS_PASSED + 1))
         # Run live monitoring for 30 seconds
         echo -e "${BLUE}📡 Running live API monitoring (30s)...${NC}"
-        timeout 30s ./testing/live-api-monitor.sh "$BASE_URL" "$NAMESPACE" 2>&1 | tee -a "$RESULTS_LOG" || true
+        timeout 30s ./developer-tools/testing/live-api-monitor.sh "$BASE_URL" "$NAMESPACE" 2>&1 | tee -a "$RESULTS_LOG" || true
     else
         TESTS_FAILED=$((TESTS_FAILED + 1))
     fi

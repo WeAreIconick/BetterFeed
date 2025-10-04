@@ -92,6 +92,14 @@ final class BetterFeed {
         require_once BF_PLUGIN_DIR . 'includes/class-bf-content-enhancer.php';
         require_once BF_PLUGIN_DIR . 'includes/class-bf-import-export.php';
         require_once BF_PLUGIN_DIR . 'includes/class-bf-scheduler.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-episode-meta.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-podcast-rss.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-json-feed.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-custom-feeds.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-redirects.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-dashboard.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-performance-monitor.php';
+require_once BF_PLUGIN_DIR . 'includes/class-bf-optimizer-suggestions.php';
     }
     
     /**
@@ -132,6 +140,30 @@ final class BetterFeed {
         
         // Feed scheduling and optimization
         BF_Scheduler::instance();
+        
+        // Episode meta fields
+        BF_Episode_Meta::instance();
+        
+        // Podcast RSS feed emission
+        BF_Podcast_RSS::instance();
+        
+        // JSON Feed support
+        BF_JSON_Feed::instance();
+        
+        // Custom Feed Endpoints
+        BF_Custom_Feeds::instance();
+        
+        // Feed Redirect Management
+        BF_Redirects::instance();
+        
+        // Performance Dashboard
+        BF_Dashboard::instance();
+        
+        // Performance Monitoring
+        BF_Performance_Monitor::instance();
+        
+        // Optimization Suggestions
+        BF_Optimizer_Suggestions::instance();
     }
     
     /**

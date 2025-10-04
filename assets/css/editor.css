@@ -1,0 +1,91 @@
+/**
+ * BetterFeed Editor Styles
+ * Styles for Gutenberg editor panels
+ */
+
+.betterfeed-episode-panel {
+    /* Panel styling */
+}
+
+.betterfeed-episode-panel .components-base-control__label {
+    font-weight: 600;
+}
+
+.betterfeed-episode-panel h3 {
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e1e1e;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+}
+
+.betterfeed-episode-panel h3:first-child {
+    margin-top: 0;
+}
+
+.betterfeed-episode-panel .components-notice {
+    margin: 16px 0;
+}
+
+.betterfeed-episode-panel .components-notice__content {
+    padding: 12px;
+}
+
+.betterfeed-episode-panel .components-text-control__input {
+    font-size: 13px;
+}
+
+.betterfeed-episode-panel .components-textarea-control__input {
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.betterfeed-episode-panel .components-select-control__input {
+    font-size: 13px;
+}
+
+.betterfeed-episode-panel .components-base-control__help {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* Media upload button styling */
+.betterfeed-episode-panel .components-button {
+    font-size: 13px;
+}
+
+.betterfeed-episode-panel .components-button.is-secondary {
+    border-color: #ddd;
+    color: #1e1e1e;
+}
+
+.betterfeed-episode-panel .components-button.is-secondary:hover {
+    border-color: #999;
+    color: #1e1e1e;
+}
+
+/* Validation error styling */
+.betterfeed-episode-panel .components-notice.is-warning {
+    background: #fff8e5;
+    border-left-color: #dba617;
+}
+
+.betterfeed-episode-panel .components-notice.is-error {
+    background: #fcf0f1;
+    border-left-color: #d63638;
+}
+
+/* Responsive adjustments */
+@media (max-width: 782px) {
+    .betterfeed-episode-panel h3 {
+        font-size: 16px;
+    }
+    
+    .betterfeed-episode-panel .components-text-control__input,
+    .betterfeed-episode-panel .components-textarea-control__input,
+    .betterfeed-episode-panel .components-select-control__input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}

@@ -97,6 +97,8 @@ class BF_Admin {
         register_setting('bf-settings', 'bf_content_options', array($this, 'sanitize_content_options'));
         register_setting('bf-settings', 'bf_analytics_options', array($this, 'sanitize_analytics_options'));
         register_setting('bf-settings', 'bf_tools_options', array($this, 'sanitize_tools_options'));
+        register_setting('bf-settings', 'bf_podcast_integrations', array($this, 'sanitize_podcast_integrations'));
+        register_setting('bf-settings', 'bf_podcast_show', array($this, 'sanitize_podcast_show'));
         
         // WordPress automatically displays settings messages - no need for explicit settings_errors() call
         add_settings_section(
@@ -144,6 +146,54 @@ class BF_Admin {
             'enable_etag',
             esc_html__('ETag Headers', 'betterfeed'),
             array($this, 'enable_etag_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_conditional_requests',
+            esc_html__('304 Not Modified Responses', 'betterfeed'),
+            array($this, 'enable_conditional_requests_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_enhanced_discovery',
+            esc_html__('Enhanced Feed Discovery', 'betterfeed'),
+            array($this, 'enable_enhanced_discovery_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_enclosure_fix',
+            esc_html__('Auto-Detect Enclosure Sizes', 'betterfeed'),
+            array($this, 'enable_enclosure_fix_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_responsive_images',
+            esc_html__('Responsive Images', 'betterfeed'),
+            array($this, 'enable_responsive_images_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_json_feed',
+            esc_html__('JSON Feed Support', 'betterfeed'),
+            array($this, 'enable_json_feed_callback'),
+            'bf_performance',
+            'bf_performance_section'
+        );
+        
+        add_settings_field(
+            'enable_google_discover',
+            esc_html__('Google Discover Optimization', 'betterfeed'),
+            array($this, 'enable_google_discover_callback'),
             'bf_performance',
             'bf_performance_section'
         );
@@ -211,6 +261,110 @@ class BF_Admin {
                 'bf_tools',
                 'bf_tools_cache_section'
         );
+        
+        // Podcast Integration Settings
+        add_settings_section(
+            'bf_podcast_integrations_section',
+            esc_html__('Platform Integrations', 'betterfeed'),
+            array($this, 'podcast_integrations_section_callback'),
+            'bf_podcast_integrations'
+        );
+        
+        add_settings_field(
+            'apple_itunes',
+            esc_html__('Apple Podcasts (iTunes)', 'betterfeed'),
+            array($this, 'apple_itunes_callback'),
+            'bf_podcast_integrations',
+            'bf_podcast_integrations_section'
+        );
+        
+        add_settings_field(
+            'spotify',
+            esc_html__('Spotify', 'betterfeed'),
+            array($this, 'spotify_callback'),
+            'bf_podcast_integrations',
+            'bf_podcast_integrations_section'
+        );
+        
+        add_settings_field(
+            'podcast_index',
+            esc_html__('Podcast Index', 'betterfeed'),
+            array($this, 'podcast_index_callback'),
+            'bf_podcast_integrations',
+            'bf_podcast_integrations_section'
+        );
+        
+        add_settings_field(
+            'google_youtube_music',
+            esc_html__('Google/YouTube Music', 'betterfeed'),
+            array($this, 'google_youtube_music_callback'),
+            'bf_podcast_integrations',
+            'bf_podcast_integrations_section'
+        );
+        
+        // Podcast Show Settings
+        add_settings_section(
+            'bf_podcast_show_section',
+            esc_html__('Podcast Information', 'betterfeed'),
+            array($this, 'podcast_show_section_callback'),
+            'bf_podcast_show'
+        );
+        
+        add_settings_field(
+            'podcast_title',
+            esc_html__('Podcast Title', 'betterfeed'),
+            array($this, 'podcast_title_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_description',
+            esc_html__('Description', 'betterfeed'),
+            array($this, 'podcast_description_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_artwork',
+            esc_html__('Cover Artwork', 'betterfeed'),
+            array($this, 'podcast_artwork_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_language',
+            esc_html__('Language', 'betterfeed'),
+            array($this, 'podcast_language_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_category',
+            esc_html__('Category', 'betterfeed'),
+            array($this, 'podcast_category_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_explicit',
+            esc_html__('Explicit Content', 'betterfeed'),
+            array($this, 'podcast_explicit_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
+        
+        add_settings_field(
+            'podcast_author',
+            esc_html__('Author', 'betterfeed'),
+            array($this, 'podcast_author_callback'),
+            'bf_podcast_show',
+            'bf_podcast_show_section'
+        );
     }
     
     /**
@@ -237,6 +391,24 @@ class BF_Admin {
             BF_VERSION,
             false
         );
+        
+        // Enqueue editor scripts for post edit pages
+        if ((isset($_GET['post']) || isset($_GET['post_type'])) && $this->is_betterfeed_enabled()) {
+            wp_enqueue_script(
+                'bf-editor-episode-panel',
+                BF_PLUGIN_URL . 'assets/js/editor/episode-panel.js',
+                array('wp-plugins', 'wp-edit-post', 'wp-element', 'wp-components', 'wp-data', 'wp-media-utils'),
+                BF_VERSION,
+                true
+            );
+            
+            wp_enqueue_style(
+                'bf-editor-episode-panel',
+                BF_PLUGIN_URL . 'assets/css/editor.css',
+                array('wp-components'),
+                BF_VERSION
+            );
+        }
         
         // Localize script with AJAX URL and nonce
         wp_localize_script('bf-admin', 'bf_admin', array(
@@ -533,7 +705,7 @@ class BF_Admin {
         $active_tab = $this->get_current_tab();
         
         // Validate tab
-        $valid_tabs = array('general', 'performance', 'content', 'tools', 'analytics');
+        $valid_tabs = array('general', 'performance', 'content', 'tools', 'analytics', 'podcast');
         if (!in_array($active_tab, $valid_tabs)) {
             $active_tab = 'general';
         }
@@ -566,6 +738,10 @@ class BF_Admin {
                    class="nav-tab <?php echo esc_attr($active_tab === 'analytics' ? 'nav-tab-active' : ''); ?>">
                     <?php esc_html_e('Analytics', 'betterfeed'); ?>
                 </a>
+                <a href="<?php echo esc_url(add_query_arg(array('page' => 'bf-settings', 'tab' => 'podcast'), admin_url('options-general.php'))); ?>" 
+                   class="nav-tab <?php echo esc_attr($active_tab === 'podcast' ? 'nav-tab-active' : ''); ?>">
+                    <?php esc_html_e('Podcast', 'betterfeed'); ?>
+                </a>
             </nav>
             
             <!-- Tab Content -->
@@ -595,9 +771,12 @@ class BF_Admin {
                     case 'analytics':
                         $this->render_analytics_tab();
                         break;
+                    case 'podcast':
+                        $this->render_podcast_tab();
+                        break;
                     default:
-                $this->render_general_tab();
-                break;
+                        $this->render_general_tab();
+                        break;
         }
     }
     
@@ -706,6 +885,29 @@ class BF_Admin {
         <?php
     }
     
+    /**
+     * Render Podcast tab
+     */
+    private function render_podcast_tab() {
+        ?>
+        <div class="tab-content">
+            <h2><?php esc_html_e('Podcast Settings', 'betterfeed'); ?></h2>
+            <p><?php esc_html_e('Configure podcast RSS feed settings for Apple Podcasts, Spotify, and other platforms.', 'betterfeed'); ?></p>
+            
+            <?php do_settings_sections('bf_podcast_integrations'); ?>
+            <?php do_settings_sections('bf_podcast_show'); ?>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Check if BetterFeed functionality is enabled
+     */
+    private function is_betterfeed_enabled() {
+        $general_options = get_option('bf_general_options', array());
+        return !empty($general_options['enable_betterfeed']);
+    }
+    
     // Settings API callback functions
     public function general_section_callback() {
         echo '<p>' . esc_html__('Configure basic BetterFeed settings.', 'betterfeed') . '</p>';
@@ -725,6 +927,14 @@ class BF_Admin {
     
     public function tools_cache_section_callback() {
         echo '<p>' . esc_html__('Tools and utilities for managing BetterFeed.', 'betterfeed') . '</p>';
+    }
+    
+    public function podcast_integrations_section_callback() {
+        echo '<p>' . esc_html__('Enable support for different podcast platforms and directories.', 'betterfeed') . '</p>';
+    }
+    
+    public function podcast_show_section_callback() {
+        echo '<p>' . esc_html__('Configure your podcast show information and metadata.', 'betterfeed') . '</p>';
     }
     
     // Field callbacks
@@ -799,7 +1009,115 @@ class BF_Admin {
                    value="1" 
                    <?php checked(1, $value); ?>>
             <?php esc_html_e('Add ETag headers for better caching', 'betterfeed'); ?>
-                        </label>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable conditional requests callback
+     */
+    public function enable_conditional_requests_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_conditional_requests']) ? $options['enable_conditional_requests'] : true;
+        ?>
+        <label for="enable_conditional_requests">
+            <input type="checkbox" 
+                   id="enable_conditional_requests" 
+                   name="bf_performance_options[enable_conditional_requests]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Send 304 Not Modified responses for unchanged feeds', 'betterfeed'); ?>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable enhanced discovery callback
+     */
+    public function enable_enhanced_discovery_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_enhanced_discovery']) ? $options['enable_enhanced_discovery'] : true;
+        ?>
+        <label for="enable_enhanced_discovery">
+            <input type="checkbox" 
+                   id="enable_enhanced_discovery" 
+                   name="bf_performance_options[enable_enhanced_discovery]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Add comprehensive feed discovery links to HTML head', 'betterfeed'); ?>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable enclosure fix callback
+     */
+    public function enable_enclosure_fix_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_enclosure_fix']) ? $options['enable_enclosure_fix'] : true;
+        ?>
+        <label for="enable_enclosure_fix">
+            <input type="checkbox" 
+                   id="enable_enclosure_fix" 
+                   name="bf_performance_options[enable_enclosure_fix]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Automatically detect and fix enclosure file sizes for podcasts', 'betterfeed'); ?>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable responsive images callback
+     */
+    public function enable_responsive_images_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_responsive_images']) ? $options['enable_responsive_images'] : true;
+        ?>
+        <label for="enable_responsive_images">
+            <input type="checkbox" 
+                   id="enable_responsive_images" 
+                   name="bf_performance_options[enable_responsive_images]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Add responsive images with multiple sizes and Media RSS support', 'betterfeed'); ?>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable JSON feed callback
+     */
+    public function enable_json_feed_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_json_feed']) ? $options['enable_json_feed'] : true;
+        ?>
+        <label for="enable_json_feed">
+            <input type="checkbox" 
+                   id="enable_json_feed" 
+                   name="bf_performance_options[enable_json_feed]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Enable JSON Feed 1.1 support at /feed/json/', 'betterfeed'); ?>
+        </label>
+        <?php
+    }
+    
+    /**
+     * Enable Google Discover callback
+     */
+    public function enable_google_discover_callback() {
+        $options = get_option('bf_performance_options');
+        $value = isset($options['enable_google_discover']) ? $options['enable_google_discover'] : true;
+        ?>
+        <label for="enable_google_discover">
+            <input type="checkbox" 
+                   id="enable_google_discover" 
+                   name="bf_performance_options[enable_google_discover]" 
+                   value="1" 
+                   <?php checked(1, $value); ?>>
+            <?php esc_html_e('Add Google Discover optimization with schema.org markup and large images', 'betterfeed'); ?>
+        </label>
         <?php
     }
     
@@ -933,6 +1251,42 @@ class BF_Admin {
             $sanitized['enable_etag'] = 0;
         }
         
+        if (isset($input['enable_conditional_requests'])) {
+            $sanitized['enable_conditional_requests'] = 1;
+        } else {
+            $sanitized['enable_conditional_requests'] = 0;
+        }
+        
+        if (isset($input['enable_enhanced_discovery'])) {
+            $sanitized['enable_enhanced_discovery'] = 1;
+        } else {
+            $sanitized['enable_enhanced_discovery'] = 0;
+        }
+        
+        if (isset($input['enable_enclosure_fix'])) {
+            $sanitized['enable_enclosure_fix'] = 1;
+        } else {
+            $sanitized['enable_enclosure_fix'] = 0;
+        }
+        
+        if (isset($input['enable_responsive_images'])) {
+            $sanitized['enable_responsive_images'] = 1;
+        } else {
+            $sanitized['enable_responsive_images'] = 0;
+        }
+        
+        if (isset($input['enable_json_feed'])) {
+            $sanitized['enable_json_feed'] = 1;
+        } else {
+            $sanitized['enable_json_feed'] = 0;
+        }
+        
+        if (isset($input['enable_google_discover'])) {
+            $sanitized['enable_google_discover'] = 1;
+        } else {
+            $sanitized['enable_google_discover'] = 0;
+        }
+        
         return $sanitized;
     }
     
@@ -976,6 +1330,225 @@ class BF_Admin {
     public function sanitize_tools_options($input) {
         // Tools tab doesn't really save settings, but we need this for Settings API
         return array();
+    }
+    
+    // Podcast field callbacks
+    public function apple_itunes_callback() {
+        $options = get_option('bf_podcast_integrations');
+        $value = isset($options['apple_itunes']) ? $options['apple_itunes'] : true;
+        ?>
+        <label for="apple_itunes">
+            <input type="checkbox" id="apple_itunes" name="bf_podcast_integrations[apple_itunes]" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable Apple Podcasts (iTunes) namespace and tags', 'betterfeed'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Required for Apple Podcasts directory submission.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function spotify_callback() {
+        $options = get_option('bf_podcast_integrations');
+        $value = isset($options['spotify']) ? $options['spotify'] : false;
+        ?>
+        <label for="spotify">
+            <input type="checkbox" id="spotify" name="bf_podcast_integrations[spotify]" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable Spotify namespace and tags', 'betterfeed'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Adds Spotify-specific RSS tags for better compatibility.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_index_callback() {
+        $options = get_option('bf_podcast_integrations');
+        $value = isset($options['podcast_index']) ? $options['podcast_index'] : false;
+        ?>
+        <label for="podcast_index">
+            <input type="checkbox" id="podcast_index" name="bf_podcast_integrations[podcast_index]" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable Podcast Index namespace and tags', 'betterfeed'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Adds advanced features like chapters, transcripts, and funding links.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function google_youtube_music_callback() {
+        $options = get_option('bf_podcast_integrations');
+        $value = isset($options['google_youtube_music']) ? $options['google_youtube_music'] : false;
+        ?>
+        <label for="google_youtube_music">
+            <input type="checkbox" id="google_youtube_music" name="bf_podcast_integrations[google_youtube_music]" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable Google/YouTube Music namespace and tags', 'betterfeed'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Adds Google Play Podcasts namespace for YouTube Music compatibility.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_title_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['title']) ? $options['title'] : get_bloginfo('name');
+        ?>
+        <input type="text" id="podcast_title" name="bf_podcast_show[title]" value="<?php echo esc_attr($value); ?>" class="regular-text" maxlength="255" />
+        <p class="description"><?php esc_html_e('The name of your podcast (max 255 characters).', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_description_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['description']) ? $options['description'] : get_bloginfo('description');
+        ?>
+        <textarea id="podcast_description" name="bf_podcast_show[description]" rows="4" cols="50" class="large-text" maxlength="4000"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('Full description of your podcast (max 4000 characters).', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_artwork_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['artwork']) ? $options['artwork'] : '';
+        ?>
+        <input type="hidden" id="podcast_artwork" name="bf_podcast_show[artwork]" value="<?php echo esc_attr($value); ?>" />
+        <button type="button" class="button" id="upload_podcast_artwork"><?php esc_html_e('Select Cover Artwork', 'betterfeed'); ?></button>
+        <div id="podcast_artwork_preview" style="margin-top: 10px;">
+            <?php if ($value) : 
+                $image = wp_get_attachment_image($value, 'medium');
+                if ($image) {
+                    echo $image;
+                }
+            endif; ?>
+        </div>
+        <p class="description"><?php esc_html_e('Square image, minimum 1400x1400px, JPG or PNG format.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_language_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['language']) ? $options['language'] : get_locale();
+        ?>
+        <select id="podcast_language" name="bf_podcast_show[language]">
+            <option value="en-us" <?php selected($value, 'en-us'); ?>><?php esc_html_e('English (United States)', 'betterfeed'); ?></option>
+            <option value="en-gb" <?php selected($value, 'en-gb'); ?>><?php esc_html_e('English (United Kingdom)', 'betterfeed'); ?></option>
+            <option value="es-es" <?php selected($value, 'es-es'); ?>><?php esc_html_e('Spanish (Spain)', 'betterfeed'); ?></option>
+            <option value="es-mx" <?php selected($value, 'es-mx'); ?>><?php esc_html_e('Spanish (Mexico)', 'betterfeed'); ?></option>
+            <option value="fr-fr" <?php selected($value, 'fr-fr'); ?>><?php esc_html_e('French (France)', 'betterfeed'); ?></option>
+            <option value="de-de" <?php selected($value, 'de-de'); ?>><?php esc_html_e('German (Germany)', 'betterfeed'); ?></option>
+            <option value="it-it" <?php selected($value, 'it-it'); ?>><?php esc_html_e('Italian (Italy)', 'betterfeed'); ?></option>
+            <option value="pt-br" <?php selected($value, 'pt-br'); ?>><?php esc_html_e('Portuguese (Brazil)', 'betterfeed'); ?></option>
+            <option value="ja-jp" <?php selected($value, 'ja-jp'); ?>><?php esc_html_e('Japanese (Japan)', 'betterfeed'); ?></option>
+            <option value="ko-kr" <?php selected($value, 'ko-kr'); ?>><?php esc_html_e('Korean (South Korea)', 'betterfeed'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Primary language of your podcast.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_category_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['category']) ? $options['category'] : 'Arts';
+        ?>
+        <select id="podcast_category" name="bf_podcast_show[category]">
+            <option value="Arts" <?php selected($value, 'Arts'); ?>><?php esc_html_e('Arts', 'betterfeed'); ?></option>
+            <option value="Business" <?php selected($value, 'Business'); ?>><?php esc_html_e('Business', 'betterfeed'); ?></option>
+            <option value="Comedy" <?php selected($value, 'Comedy'); ?>><?php esc_html_e('Comedy', 'betterfeed'); ?></option>
+            <option value="Education" <?php selected($value, 'Education'); ?>><?php esc_html_e('Education', 'betterfeed'); ?></option>
+            <option value="Fiction" <?php selected($value, 'Fiction'); ?>><?php esc_html_e('Fiction', 'betterfeed'); ?></option>
+            <option value="Government" <?php selected($value, 'Government'); ?>><?php esc_html_e('Government', 'betterfeed'); ?></option>
+            <option value="Health & Fitness" <?php selected($value, 'Health & Fitness'); ?>><?php esc_html_e('Health & Fitness', 'betterfeed'); ?></option>
+            <option value="History" <?php selected($value, 'History'); ?>><?php esc_html_e('History', 'betterfeed'); ?></option>
+            <option value="Kids & Family" <?php selected($value, 'Kids & Family'); ?>><?php esc_html_e('Kids & Family', 'betterfeed'); ?></option>
+            <option value="Leisure" <?php selected($value, 'Leisure'); ?>><?php esc_html_e('Leisure', 'betterfeed'); ?></option>
+            <option value="Music" <?php selected($value, 'Music'); ?>><?php esc_html_e('Music', 'betterfeed'); ?></option>
+            <option value="News" <?php selected($value, 'News'); ?>><?php esc_html_e('News', 'betterfeed'); ?></option>
+            <option value="Religion & Spirituality" <?php selected($value, 'Religion & Spirituality'); ?>><?php esc_html_e('Religion & Spirituality', 'betterfeed'); ?></option>
+            <option value="Science" <?php selected($value, 'Science'); ?>><?php esc_html_e('Science', 'betterfeed'); ?></option>
+            <option value="Society & Culture" <?php selected($value, 'Society & Culture'); ?>><?php esc_html_e('Society & Culture', 'betterfeed'); ?></option>
+            <option value="Sports" <?php selected($value, 'Sports'); ?>><?php esc_html_e('Sports', 'betterfeed'); ?></option>
+            <option value="Technology" <?php selected($value, 'Technology'); ?>><?php esc_html_e('Technology', 'betterfeed'); ?></option>
+            <option value="True Crime" <?php selected($value, 'True Crime'); ?>><?php esc_html_e('True Crime', 'betterfeed'); ?></option>
+            <option value="TV & Film" <?php selected($value, 'TV & Film'); ?>><?php esc_html_e('TV & Film', 'betterfeed'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Primary category for your podcast.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_explicit_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['explicit']) ? $options['explicit'] : 'false';
+        ?>
+        <select id="podcast_explicit" name="bf_podcast_show[explicit]">
+            <option value="false" <?php selected($value, 'false'); ?>><?php esc_html_e('No (Clean)', 'betterfeed'); ?></option>
+            <option value="true" <?php selected($value, 'true'); ?>><?php esc_html_e('Yes (Explicit)', 'betterfeed'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Does your podcast contain explicit content?', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function podcast_author_callback() {
+        $options = get_option('bf_podcast_show');
+        $value = isset($options['author']) ? $options['author'] : get_bloginfo('name');
+        ?>
+        <input type="text" id="podcast_author" name="bf_podcast_show[author]" value="<?php echo esc_attr($value); ?>" class="regular-text" />
+        <p class="description"><?php esc_html_e('Primary podcast creator/host name.', 'betterfeed'); ?></p>
+        <?php
+    }
+    
+    public function sanitize_podcast_integrations($input) {
+        $sanitized = array();
+        
+        if (isset($input['apple_itunes'])) {
+            $sanitized['apple_itunes'] = 1;
+        } else {
+            $sanitized['apple_itunes'] = 0;
+        }
+        
+        if (isset($input['spotify'])) {
+            $sanitized['spotify'] = 1;
+        } else {
+            $sanitized['spotify'] = 0;
+        }
+        
+        if (isset($input['podcast_index'])) {
+            $sanitized['podcast_index'] = 1;
+        } else {
+            $sanitized['podcast_index'] = 0;
+        }
+        
+        if (isset($input['google_youtube_music'])) {
+            $sanitized['google_youtube_music'] = 1;
+        } else {
+            $sanitized['google_youtube_music'] = 0;
+        }
+        
+        return $sanitized;
+    }
+    
+    public function sanitize_podcast_show($input) {
+        $sanitized = array();
+        
+        if (isset($input['title'])) {
+            $sanitized['title'] = sanitize_text_field($input['title']);
+        }
+        
+        if (isset($input['description'])) {
+            $sanitized['description'] = sanitize_textarea_field($input['description']);
+        }
+        
+        if (isset($input['artwork'])) {
+            $sanitized['artwork'] = absint($input['artwork']);
+        }
+        
+        if (isset($input['language'])) {
+            $sanitized['language'] = sanitize_text_field($input['language']);
+        }
+        
+        if (isset($input['category'])) {
+            $sanitized['category'] = sanitize_text_field($input['category']);
+        }
+        
+        if (isset($input['explicit'])) {
+            $sanitized['explicit'] = in_array($input['explicit'], array('true', 'false')) ? $input['explicit'] : 'false';
+        }
+        
+        if (isset($input['author'])) {
+            $sanitized['author'] = sanitize_text_field($input['author']);
+        }
+        
+        return $sanitized;
     }
     
     public function sanitize_all_options_old($input) {
