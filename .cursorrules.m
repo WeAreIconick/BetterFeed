@@ -509,6 +509,22 @@ define('WP_DEBUG_DISPLAY', false);
 
 **Remember:** These rules ensure your plugin meets WordPress.org directory standards and provides excellent user experience!
 
+## DEVELOPMENT FRAMEWORK INTEGRATION
+
+### Testing Framework Location
+All development tools have been organized into `./developer-tools/` for portability:
+- ✅ **Testing Tools**: `./developer-tools/testing/` - JS validation, REST API testing
+- ✅ **Generic Rules**: `./developer-tools/rules/wordpress-development-rules.md` - Portable standards
+- ✅ **Project Rules**: `./developer-tools/rules/betterfeed-specific-rules.md` - Plugin-specific patterns  
+- ✅ **Documentation**: `./developer-tools/docs/testing-guide.md` - Comprehensive testing guide
+
+### Testing Commands (Updated Paths)
+- ✅ **JavaScript Validation**: `./developer-tools/testing/validate-js.sh`
+- ✅ **REST API Testing**: `./developer-tools/testing/test-rest-api.sh`
+- ✅ **Advanced Validation**: `node ./developer-tools/testing/wordpress-js-validator.js`
+
+**PORTABILITY**: This entire framework can be copied to new WordPress projects and customised!
+
 ## WORDPRESS ADMIN SCREEN DEVELOPMENT MASTER LESSONS
 
 **CRITICAL ADMIN RULES FROM HARD-LEARNED EXPERIENCE:**
@@ -556,3 +572,102 @@ define('WP_DEBUG_DISPLAY', false);
 4. Use terminal commands when file writing tools fail
 5. Start simple, add complexity incrementally
 6. WordPress admin notices beat browser alerts every time
+
+### 7. JAVASCRIPT VALIDATION MANDATORY CHECKS
+- ✅ **Syntax Validation**: ALWAYS run `node validate.js` after editing JavaScript
+- ✅ **Common Error Patterns**: Check for function name typos, variable mismatches
+- ✅ **Braces/Brackets**: Ensure all () and {} are properly matched
+- ✅ **Function Names**: Verify consistent naming (showAdminNotice not showsAdminNotice)
+- ✅ **Auto-Validation**: Run validation before committing any JavaScript changes
+
+**JAVASCRIPT ERROR PREVENTION WORKFLOW:**
+1. **Edit JavaScript** → Test syntax with `node -c filename.js`
+2. **Run validator** → Execute `node validate.js` 
+3. **Fix any errors** → Never commit broken JavaScript
+4. **Test functionality** → Verify buttons work in browser
+5. **Final check** → Run validator once more before completion
+
+## WORDPRESS REST API DEVELOPMENT MASTER RULES
+
+**CRITICAL REST API AUTHENTICATION MANDATORY CHECKS:**
+
+### 1. REST API ENDPOINT DEVELOPMENT CRITICAL SUCCESS FACTORS
+- ✅ **Permission Callback**: ALWAYS include `'permission_callback' => array($this, 'check_admin_permissions')`
+- ✅ **User Capabilities**: Use `current_user_can('manage_options')` for admin-only endpoints
+- ✅ **Nonce Generation**: Use `wp_create_nonce('wp_rest')` for REST API authentication
+- ✅ **Route Registration**: Register ALL endpoints in `register_rest_routes()` method on `rest_api_init` hook
+
+### 2. JAVASCRIPT REST API COMMUNICATION CRITICAL REQUIREMENTS
+- ✅ **Credentials Include**: ALWAYS add `credentials: 'include'` for cookie authentication
+- ✅ **REST Nonce**: Use `window.bf_config.nonce` from `wp_create_nonce('wp_rest')`
+- ✅ **Error Handling**: Check `response.ok` and `Content-Type` headers before parsing JSON
+- ✅ **Debug Logging**: Log response status, headers, and data for troubleshooting
+
+### 3. REST API ERROR PREVENTION MANDATORY PATTERNS
+- ✅ **401 Unauthorized**: Always caused by missing cookies - add `credentials: 'include'`
+- ✅ **HTML Response**: Means 404/500 error page - check endpoint URL and registration
+- ✅ **Parse Error '<'**: WordPress returning HTML instead of JSON - check authentication
+- ✅ **CORS Issues**: Add proper headers and credentials for cross-origin requests
+
+### 4. REST ENDPOINT TESTING CRITICAL WORKFLOW
+- ✅ **cURL Test**: Always test endpoints with `curl -I "wp-json/betterfeed/v1/endpoint"`
+- ✅ **Status Check**: Verify 200 OK, not 401/404/500
+- ✅ **JSON Response**: Confirm Content-Type: application/json
+- ✅ **Nonce Validation**: Test with proper X-WP-Nonce header
+
+### 5. REST API SECURITY MANDATORY IMPLEMENTATION
+- ✅ **Capability Check**: REST endpoints MUST check user capabilities
+- ✅ **Nonce Verification**: WordPress automatically verifies wp_rest nonces
+- ✅ **Input Validation**: Sanitize and validate all request parameters
+- ✅ **Error Messages**: Never expose sensitive data in error responses
+
+**REST API DEVELOPMENT GOLDEN RULES:**
+1. **Test endpoints with cURL BEFORE adding JavaScript**
+2. **Always include credentials: 'include' in fetch calls**
+3. **Check response.ok before parsing JSON**  
+4. **Log everything for debugging REST API issues**
+5. **401 errors ALWAYS mean authentication problems**
+6. **HTML responses ALWAYS mean endpoint/404 issues**
+
+**CRITICAL REST API DEBUGGING CHECKLIST:**
+1. **Endpoint exists?** → Check `wp-json/betterfeed/v1/endpoint` with browser
+2. **Authentication works?** → Test logged-in vs logged-out responses  
+3. **JavaScript configured?** → Verify `window.bf_config` and nonce presence
+4. **Headers correct?** → Use `credentials: 'include'` and `X-WP-Nonce`
+5. **Response type?** → Check `Content-Type: application/json`
+
+### 6. REST API MISTAKE PREVENTION SYSTEMATIC APPROACH
+- ❌ **Never**: Skip `credentials: 'include'` - causes 401 errors
+- ❌ **Never**: Assume JSON response without checking Content-Type
+- ❌ **Never**: Forget `permission_callback` in route registration
+- ❌ **Never**: Use different nonce types (admin vs REST) inconsistently
+- ❌ **Never**: Test JavaScript without first validating endpoint with cURL
+
+**EMERGENCY REST API DEBUGGING COMMANDS:**
+```bash
+# Test endpoint accessibility
+curl -I "http://localhost:8890/wp-json/betterfeed/v1/export-analytics"
+
+# Test with authentication  
+curl -I "http://localhost:8890/wp-json/betterfeed/v1/export-analytics" \
+  -H "X-WP-Nonce: [your-nonce]"
+
+# Debug WordPress REST API
+curl "http://localhost:8890/wp-json/" | grep -i betterfeed
+
+# Automated REST API testing
+./test-rest-api.sh                    # Test all endpoints
+./test-rest-api.sh http://yoursite.com  # Test remote site
+```
+
+**REST API VALIDATION INTERPRETATION GUIDE:**
+- ✅ **401 Unauthorized**: Authentication working - endpoints exist and are protected
+- ❌ **404 Not Found**: Route registration issue - check `register_rest_routes()` calls
+- ❌ **200 OK**: No authentication required - security risk, add `permission_callback`
+- ❌ **HTML Response**: WordPress is returning error pages, not JSON
+
+**AUTOMATED TESTING PRE-JS DEVELOPMENT:**
+1. **Run test script**: `./test-rest-api.sh` 
+2. **Verify 401 responses**: Means endpoints exist and require auth
+3. **Fix any 404s**: Route registration problems
+4. **Then write JavaScript**: Only after endpoints are confirmed working

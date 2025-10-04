@@ -347,12 +347,50 @@ class BF_Admin {
      */
     public function rest_export_analytics($request) {
         try {
-            // Analytics export logic here
+            $format = $request->get_param('format') ?: 'csv';
+            $days = $request->get_param('days') ?: 30;
+            
+            // Validate parameters
+            if (!in_array($format, array('csv', 'json'))) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'message' => 'Invalid format. Must be csv or json.'
+                ), 400);
+            }
+            
+            $days = intval($days);
+            if ($days < 1 || $days > 365) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'message' => 'Days must be between 1 and 365.'
+                ), 400);
+            }
+            
+            // Get analytics data using the analytics class
+            $analytics_class = BF_Analytics::instance();
+            $data = $analytics_class->export_analytics($days, $format);
+            
+            if (empty($data)) {
+                return new WP_REST_Response(array(
+                    'success' => true,
+                    'data' => $format === 'csv' ? 'feed_url,user_agent,ip_address,referer,accessed_at' : '[]',
+                    'filename' => 'analytics-empty-' . gmdate('Y-m-d') . '.' . $format,
+                    'message' => 'No analytics data found for the specified period.'
+                ), 200);
+            }
+            
+            // Generate filename
+            $filename = 'betterfeed-analytics-' . gmdate('Y-m-d') . '-' . $days . 'days.' . $format;
+            
             return new WP_REST_Response(array(
                 'success' => true,
-                'data' => 'analytics,data,here',
+                'data' => $data,
+                'filename' => $filename,
+                'format' => $format,
+                'days' => $days,
                 'message' => 'Analytics exported successfully!'
             ), 200);
+            
         } catch (Exception $e) {
             return new WP_REST_Response(array(
                 'success' => false,
