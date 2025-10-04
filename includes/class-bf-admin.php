@@ -97,6 +97,8 @@ class BF_Admin {
         register_setting('bf-settings', 'bf_content_options', array($this, 'sanitize_content_options'));
         register_setting('bf-settings', 'bf_analytics_options', array($this, 'sanitize_analytics_options'));
         register_setting('bf-settings', 'bf_tools_options', array($this, 'sanitize_tools_options'));
+        
+        // WordPress automatically displays settings messages - no need for explicit settings_errors() call
         add_settings_section(
             'bf_general_section',
             esc_html__('General Settings', 'betterfeed'),
@@ -439,12 +441,41 @@ class BF_Admin {
      */
     public function rest_export_settings($request) {
         try {
-            // Settings export logic here
+            // Collect all BetterFeed settings
+            $settings = array(
+                'general' => get_option('bf_general_options', array()),
+                'performance' => get_option('bf_performance_options', array()),
+                'content' => get_option('bf_content_options', array()),
+                'analytics' => get_option('bf_analytics_options', array()),
+                'tools' => get_option('bf_tools_options', array())
+            );
+            
+            // Add metadata
+            $export_data = array(
+                'plugin' => 'BetterFeed',
+                'version' => BF_VERSION,
+                'exported_at' => gmdate('Y-m-d H:i:s'),
+                'site_url' => get_site_url(),
+                'settings' => $settings
+            );
+            
+            // Convert to JSON
+            $json_data = wp_json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            
+            if ($json_data === false) {
+                throw new Exception('Failed to encode settings to JSON');
+            }
+            
+            // Generate filename
+            $filename = 'betterfeed-settings-' . gmdate('Y-m-d-H-i-s') . '.json';
+            
             return new WP_REST_Response(array(
                 'success' => true,
-                'data' => 'settings,database,here',
+                'data' => $json_data,
+                'filename' => $filename,
                 'message' => 'Settings exported successfully!'
             ), 200);
+            
         } catch (Exception $e) {
             return new WP_REST_Response(array(
                 'success' => false,
@@ -510,8 +541,6 @@ class BF_Admin {
         
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-            
-            <?php settings_errors(); ?>
             
             <p><?php esc_html_e('Configure performance, SEO, analytics, and content optimization for your WordPress feeds.', 'betterfeed'); ?></p>
             
@@ -1045,5 +1074,6 @@ class BF_Admin {
         
         return 'general';
     }
+    
     
 }

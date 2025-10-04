@@ -38,7 +38,9 @@ developer-tools/
 ├── testing/           # Testing and validation tools
 │   ├── validate-js.sh                    # Quick JavaScript validation
 │   ├── test-rest-api.sh                  # REST API endpoint testing
-│   └── wordpress-js-validator.js         # Advanced JavaScript validator
+│   ├── wordpress-js-validator.js         # Advanced JavaScript validator
+│   ├── advanced-js-monitor.js           # Enhanced error prevention monitoring
+│   └── live-api-monitor.sh              # Real-time REST API monitoring
 ├── rules/            # Development standards and rules
 │   ├── wordpress-development-rules.md    # Generic WordPress standards
 │   └── betterfeed-specific-rules.md      # Plugin-specific patterns

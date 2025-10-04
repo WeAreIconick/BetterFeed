@@ -671,3 +671,137 @@ curl "http://localhost:8890/wp-json/" | grep -i betterfeed
 2. **Verify 401 responses**: Means endpoints exist and require auth
 3. **Fix any 404s**: Route registration problems
 4. **Then write JavaScript**: Only after endpoints are confirmed working
+## 🚨 CRITICAL: REST API URL VALIDATION (NEVER REPEAT THE ERROR!)
+
+### WORDPRESS REST API URL DISASTERS TO PREVENT
+
+**❌ NEVER USE THESE URL PATTERNS:**
+```javascript
+// This becomes /wp-admin/wp-json/ in WordPress admin context!
+fetch('./wp-json/betterfeed/v1/clear-cache')
+// This causes path resolution errors!
+fetch('../wp-json/betterfeed/v1/clear-cache')  
+// This is completely wrong!
+fetch('/wp-admin/wp-json/betterfeed/v1/clear-cache')
+// This is context-dependent and unreliable!
+fetch('wp-json/betterfeed/v1/clear-cache')
+```
+
+**✅ ALWAYS USE THESE ABSOLUTE URL PATTERNS:**
+```javascript
+// Always correct regardless of WordPress context!
+fetch('/wp-json/betterfeed/v1/clear-cache')
+fetch('/wp-json/betterfeed/v1/warm-cache')
+fetch('/wp-json/betterfeed/v1/export-analytics')
+fetch('/wp-json/betterfeed/v1/apply-preset')
+```
+
+### CRITICAL: BEFORE ANY WORDPRESS REST API CALL
+
+**MANDATORY CHECKLIST:**
+- [ ] URL starts with `/wp-json/` (NOT `./wp-json/` or `../wp-json/`)
+- [ ] NEVER uses `/wp-admin/wp-json/` (this path doesn't exist!)
+- [ ] Uses absolute URL from root ($/wp-json/...$)
+- [ ] Includes namespace `/betterfeed/`
+- [ ] Includes version `/v1/`
+- [ ] Includes `credentials: 'include'` for WordPress auth
+- [ ] Includes `X-WP-Nonce` header
+- [ ] Has proper error handling with `.catch()`
+
+### ERROR PREVENTION RULES
+
+**PATTERN 7: REST API URL DISASTERS**
+1. CRITICAL: Never use relative `wp-json` paths - they become `/wp-admin/wp-json/` in admin context
+2. CRITICAL: Never use `/wp-admin/wp-json/` - this URL doesn't exist in WordPress!
+3. CRITICAL: Always use absolute URLs `/wp-json/...` - works everywhere
+4. MANDATORY: Test every fetch() URL manually - check Network tab
+5. MANDATORY: Look for 404 vs 401 responses - 404 = wrong URL, 401 = auth issue
+
+**WHY THIS ERROR HAPPENS:**
+- WordPress admin pages run on `/wp-admin/*` URLs
+- Relative `./wp-json/` resolves to `/wp-admin/wp-json/` in admin context
+- `/wp-admin/wp-json/` doesn't exist - WordPress REST API is at `/wp-json/`
+- Only absolute `/wp-json/` works everywhere
+
+**FAILURE IMMEDIATELY IF:**
+- Any fetch() contains `./wp-json/` or `../wp-json/`
+- Any fetch() contains `/wp-admin/wp-json/`
+- Missing version `/v1/` in REST API calls
+- Missing `credentials: 'include'` for WordPress auth
+
+This prevents the exact 404 error that took us 6 steps to debug!
+
+## 🚨 CRITICAL: SETTINGS SAVED MESSAGE REGRESSION PREVENTION
+
+### NEVER REMOVE DUPLICATE MESSAGE FILTERING
+
+**CRITICAL RULE:** The `suppress_duplicate_settings_messages()` method and `removable_query_args` filter are MANDATORY and must NEVER be removed!
+
+**WHY THIS EXISTS:**
+- We have 5 separate `register_setting()` calls for different option groups
+- Each `register_setting()` generates its own "Settings saved" message  
+- Without filtering, users see 5 duplicate messages
+- This creates a terrible user experience
+
+**WHAT MUST ALWAYS STAY:**
+```php
+// In register_settings() method:
+add_filter('removable_query_args', array($this, 'suppress_duplicate_settings_messages'));
+
+// At end of class:
+public function suppress_duplicate_settings_messages($args) {
+    // Suppress duplicate settings-updated messages
+    // Keep only the first occurrence, remove extras
+}
+```
+
+**FAILURE CONDITIONS:**
+- If this filtering is removed, users get 5 "Settings saved" messages
+- This is a critical UX regression
+- NEVER remove this filtering without replacing it with equivalent functionality
+
+**REGENERATION PREVENTION:**
+- Always test settings page after ANY admin changes
+- Look for multiple "Settings saved" messages
+- If you see duplicates, the filtering is missing or broken
+- This is a ZERO-TOLERANCE issue - must be fixed immediately
+
+This prevents the exact regression that just occurred!
+
+## 🚨 CRITICAL: WORDPRESS SETTINGS MESSAGES REGRESSION PREVENTION
+
+### NEVER ADD EXPLICIT settings_errors() CALLS
+
+**CRITICAL RULE:** NEVER call `settings_errors()` explicitly on WordPress Settings pages!
+
+**WHY THIS CAUSES DUPLICATES:**
+- WordPress automatically displays settings messages on Settings pages
+- Explicit `settings_errors()` call creates a second identical message
+- Result: User sees duplicate "Settings saved" messages
+
+**WHAT CAUSED THE REGRESSION:**
+```php
+// ❌ NEVER DO THIS - Causes duplicate messages!
+<?php settings_errors(); ?>
+```
+
+**WHAT WORDPRESS DOES AUTOMATICALLY:**
+- WordPress automatically shows settings messages on Settings pages
+- No manual intervention needed
+- Just let WordPress handle it
+
+**PREVENTION RULES:**
+1. NEVER add `<?php settings_errors(); ?>` to Settings pages
+2. WordPress handles settings messages automatically
+3. Only use `settings_errors()` on non-Settings pages if needed
+4. Test settings pages after ANY admin template changes
+
+**FAILURE CONDITIONS:**
+- If `settings_errors()` appears in admin template code
+- If users see duplicate "Settings saved" messages
+- This is a ZERO-TOLERANCE issue
+
+**THE FIX:**
+Simply remove any explicit `settings_errors()` calls from Settings page templates.
+
+This prevents the exact duplicate message issue that just occurred!

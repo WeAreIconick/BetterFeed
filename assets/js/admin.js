@@ -1,6 +1,6 @@
 /**
  * BetterFeed Admin JavaScript
- * Version: 1.1.3 - REST API AUTHENTICATED!
+ * Version: 1.1.6 - CLEAN REST API URLS!
  */
 
 function showAdminNotice(message, type) {
@@ -34,10 +34,6 @@ function downloadFile(content, filename, contentType) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if configuration is available
-    console.log('bf_config available:', typeof window.bf_config !== 'undefined');
-    console.log('bf_config:', window.bf_config);
-    
     // Clear Cache button
     var clearCacheBtn = document.getElementById('bf-clear-cache');
     if (clearCacheBtn) {
@@ -47,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             btn.textContent = 'Clearing...';
             
-            fetch('./wp-json/betterfeed/v1/clear-cache', {
+            fetch('/wp-json/betterfeed/v1/clear-cache', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -55,13 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 credentials: 'include'
             })
-            .then(response => {
-                console.log('Clear cache response:', response.status, response.statusText);
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showAdminNotice(data.message);
@@ -70,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Clear cache error:', error);
                 showAdminNotice('Error: ' + error.message, 'error');
             })
             .finally(() => {
@@ -89,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             btn.textContent = 'Warming...';
             
-            fetch('./wp-json/betterfeed/v1/warm-cache', {
+            fetch('/wp-json/betterfeed/v1/warm-cache', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -97,13 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 credentials: 'include'
             })
-            .then(response => {
-                console.log('Warm cache response:', response.status, response.statusText);
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showAdminNotice(data.message);
@@ -112,7 +95,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Warm cache error:', error);
                 showAdminNotice('Error: ' + error.message, 'error');
             })
             .finally(() => {
@@ -122,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Analytics Export button - REAL FUNCTIONALITY!
+    // Analytics Export button
     var exportAnalyticsBtn = document.getElementById('bf-export-analytics');
     if (exportAnalyticsBtn) {
         exportAnalyticsBtn.addEventListener('click', function(e) {
@@ -133,35 +115,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             var format = 'csv';
             var days = 30;
-            var url = './wp-json/betterfeed/v1/export-analytics?format=' + format + '&days=' + days;
             
-            console.log('Exporting analytics to:', url);
-            
-            fetch(url, {
+            fetch('/wp-json/betterfeed/v1/export-analytics?format=' + format + '&days=' + days, {
                 method: 'GET',
                 headers: {
                     'X-WP-Nonce': window.bf_config ? window.bf_config.nonce : ''
                 },
                 credentials: 'include'
             })
-            .then(response => {
-                console.log('Export response:', response.status, response.statusText);
-                console.log('Response headers:', response.headers.get('content-type'));
-                
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-                }
-                
-                // Check if response is actually JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Response is not JSON. Content-Type: ' + contentType);
-                }
-                
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Export data received:', data);
                 if (data.success) {
                     var contentType = data.format === 'csv' ? 'text/csv' : 'application/json';
                     downloadFile(data.data, data.filename, contentType);
@@ -171,7 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Export error:', error);
                 showAdminNotice('Export failed: ' + error.message, 'error');
             })
             .finally(() => {
@@ -191,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Preset handling
-    var presetPresetSelect = document.getElementById('bf-preset-select');
+    var presetSelect = document.getElementById('bf-preset-select');
     var applyBtn = document.getElementById('bf-apply-preset');
     
     if (presetSelect && applyBtn) {
@@ -208,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             btn.textContent = 'Applying...';
             
-            fetch('./wp-json/betterfeed/v1/apply-preset', {
+            fetch('/wp-json/betterfeed/v1/apply-preset', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -219,12 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     preset: preset
                 })
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showAdminNotice(data.message);
