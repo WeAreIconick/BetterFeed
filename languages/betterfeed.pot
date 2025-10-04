@@ -1,0 +1,119 @@
+# Copyright (C) 2024 BetterFeed
+# This file is distributed under the same license as the BetterFeed package.
+msgid ""
+msgstr ""
+"Project-Id-Version: BetterFeed 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/WeAreIconick/betterfeed\n"
+"POT-Creation-Date: 2024-01-01 00:00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: includes/class-bf-admin.php:65
+msgid "BetterFeed"
+msgstr ""
+
+#: includes/class-bf-admin.php:66
+msgid "Feed Optimizer"
+msgstr ""
+
+#: includes/class-bf-admin.php:139
+msgid "Clearing cache..."
+msgstr ""
+
+#: includes/class-bf-admin.php:140
+msgid "Cache cleared successfully!"
+msgstr ""
+
+#: includes/class-bf-admin.php:141
+msgid "Warming cache..."
+msgstr ""
+
+#: includes/class-bf-admin.php:142
+msgid "Cache warmed successfully!"
+msgstr ""
+
+#: includes/class-bf-admin.php:143
+msgid "Testing feed..."
+msgstr ""
+
+#: includes/class-bf-admin.php:144
+msgid "Feed is valid!"
+msgstr ""
+
+#: includes/class-bf-admin.php:145
+msgid "Feed validation failed!"
+msgstr ""
+
+#: includes/class-bf-admin.php:146
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: includes/class-bf-admin.php:162
+msgid "Performance"
+msgstr ""
+
+#: includes/class-bf-admin.php:165
+msgid "SEO"
+msgstr ""
+
+#: includes/class-bf-admin.php:168
+msgid "Content"
+msgstr ""
+
+#: includes/class-bf-admin.php:171
+msgid "Formats"
+msgstr ""
+
+#: includes/class-bf-admin.php:174
+msgid "Analytics"
+msgstr ""
+
+#: includes/class-bf-admin.php:177
+msgid "Podcast"
+msgstr ""
+
+#: includes/class-bf-admin.php:180
+msgid "Tools"
+msgstr ""
+
+#: includes/class-bf-admin.php:210
+msgid "Performance Settings"
+msgstr ""
+
+#: includes/class-bf-admin.php:215
+msgid "Enable Caching"
+msgstr ""
+
+#: includes/class-bf-admin.php:219
+msgid "Cache feed output for better performance"
+msgstr ""
+
+#: includes/class-bf-admin.php:224
+msgid "Cache Duration (seconds)"
+msgstr ""
+
+#: includes/class-bf-admin.php:228
+msgid "How long to cache feed output (60-86400 seconds)"
+msgstr ""
+
+#: includes/class-bf-admin.php:233
+msgid "GZIP Compression"
+msgstr ""
+
+#: includes/class-bf-admin.php:237
+msgid "Enable GZIP compression for feeds"
+msgstr ""
+
+#: includes/class-bf-admin.php:242
+msgid "ETag Headers"
+msgstr ""
+
+#: includes/class-bf-admin.php:246
+msgid "Add ETag headers for better caching"
+msgstr ""
+
