@@ -275,7 +275,7 @@ class BF_Podcast_RSS {
         
         // Subtitle
         if (!empty($episode_meta['subtitle'])) {
-            echo '<itunes:subtitle><![CDATA[' . $episode_meta['subtitle'] . ']]></itunes:subtitle>' . "\n";
+            echo '<itunes:subtitle><![CDATA[' . esc_html($episode_meta['subtitle']) . ']]></itunes:subtitle>' . "\n";
         }
         
         // Author
@@ -289,7 +289,7 @@ class BF_Podcast_RSS {
             $summary = wp_strip_all_tags(get_the_content($post));
         }
         if (!empty($summary)) {
-            echo '<itunes:summary><![CDATA[' . $summary . ']]></itunes:summary>' . "\n";
+            echo '<itunes:summary><![CDATA[' . esc_html($summary) . ']]></itunes:summary>' . "\n";
         }
         
         // Block episode
@@ -335,7 +335,7 @@ class BF_Podcast_RSS {
                     $href_attr = !empty($person['href']) ? ' href="' . esc_attr($person['href']) . '"' : '';
                     $group_attr = !empty($person['group']) ? ' group="' . esc_attr($person['group']) . '"' : '';
                     
-                    echo '<podcast:person' . $img_attr . $href_attr . $group_attr . '>' . esc_html($person['name']) . '</podcast:person>' . "\n";
+                    echo '<podcast:person' . esc_attr($img_attr) . esc_attr($href_attr) . esc_attr($group_attr) . '>' . esc_html($person['name']) . '</podcast:person>' . "\n";
                 }
             }
         }

@@ -59,8 +59,8 @@ class BF_Custom_Feeds {
         add_filter('query_vars', array($this, 'add_query_vars'));
         add_action('template_redirect', array($this, 'handle_custom_feed_request'));
         
-        // Admin hooks
-        add_action('admin_menu', array($this, 'add_admin_menu'));
+        // Admin hooks - now integrated into main BetterFeed settings
+        // add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_post_bf_save_custom_feed', array($this, 'save_custom_feed'));
         add_action('admin_post_bf_delete_custom_feed', array($this, 'delete_custom_feed'));
         
@@ -134,7 +134,7 @@ class BF_Custom_Feeds {
         ob_start();
         
         // RSS header
-        echo '<?xml version="1.0" encoding="' . get_option('blog_charset') . '"?>' . "\n";
+        echo '<?xml version="1.0" encoding="' . esc_attr(get_option('blog_charset')) . '"?>' . "\n";
         echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/">' . "\n";
         echo '<channel>' . "\n";
         
@@ -165,13 +165,20 @@ class BF_Custom_Feeds {
         
         // Get output and send
         $output = ob_get_clean();
-        echo $output;
+        echo wp_kses_post($output);
     }
     
     /**
      * Get posts for custom feed
      */
     private function get_custom_feed_posts($config) {
+        // Create cache key based on configuration
+        $cache_key = 'bf_custom_feed_posts_' . md5(serialize($config));
+        $posts = wp_cache_get($cache_key, 'betterfeed');
+        
+        if (false !== $posts) {
+            return $posts;
+        }
         $args = array(
             'post_status' => 'publish',
             'numberposts' => !empty($config['limit']) ? intval($config['limit']) : 10,
@@ -236,7 +243,12 @@ class BF_Custom_Feeds {
             $args['order'] = strtoupper(sanitize_text_field($config['order']));
         }
         
-        return get_posts($args);
+        $posts = get_posts($args);
+        
+        // Cache for 15 minutes (shorter than other caches since feeds change more frequently)
+        wp_cache_set($cache_key, $posts, 'betterfeed', 15 * MINUTE_IN_SECONDS);
+        
+        return $posts;
     }
     
     /**
@@ -267,7 +279,7 @@ class BF_Custom_Feeds {
         // Content
         $content = apply_filters('the_content', get_the_content(null, false, $post));
         $content = str_replace(']]>', ']]&gt;', $content);
-        echo '<content:encoded><![CDATA[' . $content . ']]></content:encoded>' . "\n";
+        echo '<content:encoded><![CDATA[' . wp_kses_post($content) . ']]></content:encoded>' . "\n";
         
         echo '</item>' . "\n";
     }
@@ -292,7 +304,8 @@ class BF_Custom_Feeds {
     public function admin_page() {
         $custom_feeds = get_option('bf_custom_feeds', array());
         
-        if (isset($_POST['action']) && $_POST['action'] === 'add_feed') {
+        if (isset($_POST['action']) && $_POST['action'] === 'add_feed' && 
+            isset($_POST['bf_feed_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bf_feed_nonce'])), 'bf_add_feed')) {
             $this->handle_add_feed();
             $custom_feeds = get_option('bf_custom_feeds', array());
         }
@@ -476,20 +489,21 @@ class BF_Custom_Feeds {
      * Handle add feed
      */
     private function handle_add_feed() {
-        if (!wp_verify_nonce($_POST['bf_feed_nonce'], 'bf_add_feed')) {
+        // Check if nonce exists and verify it
+        if (!isset($_POST['bf_feed_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bf_feed_nonce'])), 'bf_add_feed')) {
             wp_die(esc_html__('Security check failed.', 'betterfeed'));
         }
         
         $feed_data = array(
-            'title' => sanitize_text_field($_POST['feed_title']),
-            'slug' => sanitize_title($_POST['feed_slug']),
-            'description' => sanitize_textarea_field($_POST['feed_description']),
-            'limit' => intval($_POST['feed_limit']),
-            'post_types' => isset($_POST['feed_post_types']) ? array_map('sanitize_text_field', $_POST['feed_post_types']) : array('post'),
+            'title' => isset($_POST['feed_title']) ? sanitize_text_field(wp_unslash($_POST['feed_title'])) : '',
+            'slug' => isset($_POST['feed_slug']) ? sanitize_title(wp_unslash($_POST['feed_slug'])) : '',
+            'description' => isset($_POST['feed_description']) ? sanitize_textarea_field(wp_unslash($_POST['feed_description'])) : '',
+            'limit' => isset($_POST['feed_limit']) ? intval($_POST['feed_limit']) : 10,
+            'post_types' => isset($_POST['feed_post_types']) ? array_map('sanitize_text_field', wp_unslash($_POST['feed_post_types'])) : array('post'),
             'categories' => isset($_POST['feed_categories']) ? array_map('intval', $_POST['feed_categories']) : array(),
             'tags' => isset($_POST['feed_tags']) ? array_map('intval', $_POST['feed_tags']) : array(),
-            'orderby' => sanitize_text_field($_POST['feed_orderby']),
-            'order' => sanitize_text_field($_POST['feed_order']),
+            'orderby' => isset($_POST['feed_orderby']) ? sanitize_text_field(wp_unslash($_POST['feed_orderby'])) : 'date',
+            'order' => isset($_POST['feed_order']) ? sanitize_text_field(wp_unslash($_POST['feed_order'])) : 'DESC',
             'enabled' => isset($_POST['feed_enabled'])
         );
         
@@ -519,11 +533,12 @@ class BF_Custom_Feeds {
      * Delete custom feed
      */
     public function delete_custom_feed() {
-        if (!wp_verify_nonce($_GET['_wpnonce'], 'bf_delete_feed')) {
+        // Check if nonce exists and verify it
+        if (!isset($_GET['_wpnonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'bf_delete_feed')) {
             wp_die(esc_html__('Security check failed.', 'betterfeed'));
         }
         
-        $feed_index = intval($_GET['feed_index']);
+        $feed_index = isset($_GET['feed_index']) ? intval($_GET['feed_index']) : -1;
         $custom_feeds = get_option('bf_custom_feeds', array());
         
         if (isset($custom_feeds[$feed_index])) {

@@ -57,8 +57,8 @@ class BF_Redirects {
         // Handle redirects
         add_action('template_redirect', array($this, 'handle_redirects'), 1);
         
-        // Admin hooks
-        add_action('admin_menu', array($this, 'add_admin_menu'));
+        // Admin hooks - now integrated into main BetterFeed settings
+        // add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_post_bf_save_redirect', array($this, 'save_redirect'));
         add_action('admin_post_bf_delete_redirect', array($this, 'delete_redirect'));
         add_action('admin_post_bf_test_redirect', array($this, 'test_redirect'));
@@ -184,7 +184,7 @@ class BF_Redirects {
             'from_url' => $from_url,
             'to_url' => $redirect['to'],
             'status_code' => $redirect['status_code'],
-            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : '',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '',
             'ip_address' => $this->get_client_ip(),
             'redirect_id' => $redirect['id']
         );
@@ -208,7 +208,7 @@ class BF_Redirects {
         
         foreach ($ip_keys as $key) {
             if (array_key_exists($key, $_SERVER) === true) {
-                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                foreach (explode(',', sanitize_text_field(wp_unslash($_SERVER[$key]))) as $ip) {
                     $ip = trim($ip);
                     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
                         return $ip;
@@ -217,7 +217,7 @@ class BF_Redirects {
             }
         }
         
-        return isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
+        return isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
     }
     
     /**
@@ -240,7 +240,8 @@ class BF_Redirects {
     public function admin_page() {
         $redirects = get_option('bf_feed_redirects', array());
         
-        if (isset($_POST['action']) && $_POST['action'] === 'add_redirect') {
+        if (isset($_POST['action']) && $_POST['action'] === 'add_redirect' && 
+            isset($_POST['bf_redirect_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bf_redirect_nonce'])), 'bf_add_redirect')) {
             $this->handle_add_redirect();
             $redirects = get_option('bf_feed_redirects', array());
         }
@@ -370,7 +371,7 @@ class BF_Redirects {
                         <tbody>
                             <?php foreach ($recent_logs as $log): ?>
                                 <tr>
-                                    <td><?php echo esc_html(date('M j, Y H:i:s', strtotime($log['timestamp']))); ?></td>
+                                    <td><?php echo esc_html(gmdate('M j, Y H:i:s', strtotime($log['timestamp']))); ?></td>
                                     <td><code><?php echo esc_html($log['from_url']); ?></code></td>
                                     <td><?php echo esc_html($log['to_url']); ?></td>
                                     <td><?php echo esc_html($log['status_code']); ?></td>
@@ -416,16 +417,17 @@ class BF_Redirects {
      * Handle add redirect
      */
     private function handle_add_redirect() {
-        if (!wp_verify_nonce($_POST['bf_redirect_nonce'], 'bf_add_redirect')) {
+        // Check if nonce exists and verify it
+        if (!isset($_POST['bf_redirect_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bf_redirect_nonce'])), 'bf_add_redirect')) {
             wp_die(esc_html__('Security check failed.', 'betterfeed'));
         }
         
         $redirect_data = array(
             'id' => uniqid(),
-            'from' => sanitize_text_field($_POST['redirect_from']),
-            'to' => esc_url_raw($_POST['redirect_to']),
-            'status_code' => intval($_POST['redirect_status_code']),
-            'description' => sanitize_text_field($_POST['redirect_description']),
+            'from' => isset($_POST['redirect_from']) ? sanitize_text_field(wp_unslash($_POST['redirect_from'])) : '',
+            'to' => isset($_POST['redirect_to']) ? esc_url_raw(wp_unslash($_POST['redirect_to'])) : '',
+            'status_code' => isset($_POST['redirect_status_code']) ? intval($_POST['redirect_status_code']) : 301,
+            'description' => isset($_POST['redirect_description']) ? sanitize_text_field(wp_unslash($_POST['redirect_description'])) : '',
             'enabled' => isset($_POST['redirect_enabled']),
             'created_at' => current_time('mysql')
         );
@@ -453,11 +455,12 @@ class BF_Redirects {
      * Delete redirect
      */
     public function delete_redirect() {
-        if (!wp_verify_nonce($_GET['_wpnonce'], 'bf_delete_redirect')) {
+        // Check if nonce exists and verify it
+        if (!isset($_GET['_wpnonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'bf_delete_redirect')) {
             wp_die(esc_html__('Security check failed.', 'betterfeed'));
         }
         
-        $redirect_index = intval($_GET['redirect_index']);
+        $redirect_index = isset($_GET['redirect_index']) ? intval($_GET['redirect_index']) : -1;
         $redirects = get_option('bf_feed_redirects', array());
         
         if (isset($redirects[$redirect_index])) {
@@ -478,11 +481,12 @@ class BF_Redirects {
      * Test redirect
      */
     public function test_redirect() {
-        if (!wp_verify_nonce($_GET['_wpnonce'], 'bf_test_redirect')) {
+        // Check if nonce exists and verify it
+        if (!isset($_GET['_wpnonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'bf_test_redirect')) {
             wp_die(esc_html__('Security check failed.', 'betterfeed'));
         }
         
-        $redirect_index = intval($_GET['redirect_index']);
+        $redirect_index = isset($_GET['redirect_index']) ? intval($_GET['redirect_index']) : -1;
         $redirects = get_option('bf_feed_redirects', array());
         
         if (isset($redirects[$redirect_index])) {
@@ -492,12 +496,13 @@ class BF_Redirects {
             $test_url = home_url('/feed/');
             $matches = $this->url_matches($test_url, $redirect['from']);
             
+            // translators: %1$s is the redirect pattern, %2$s is the test URL
             $message = $matches 
-                ? sprintf(esc_html__('Redirect pattern "%s" matches test URL "%s"', 'betterfeed'), $redirect['from'], $test_url)
-                : sprintf(esc_html__('Redirect pattern "%s" does not match test URL "%s"', 'betterfeed'), $redirect['from'], $test_url);
+                ? sprintf(esc_html__('Redirect pattern "%1$s" matches test URL "%2$s"', 'betterfeed'), $redirect['from'], $test_url)
+                : sprintf(esc_html__('Redirect pattern "%1$s" does not match test URL "%2$s"', 'betterfeed'), $redirect['from'], $test_url);
             
             add_action('admin_notices', function() use ($message) {
-                echo '<div class="notice notice-info is-dismissible"><p>' . $message . '</p></div>';
+                echo '<div class="notice notice-info is-dismissible"><p>' . esc_html($message) . '</p></div>';
             });
         }
         

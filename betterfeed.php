@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BetterFeed
  * Plugin URI: https://github.com/WeAreIconick/betterfeed
- * Description: Optimizes WordPress RSS feeds for performance, SEO, modern standards, and reader compatibility. Implements all the "should be in core" features that WordPress neglects.
+ * Description: Enhances WordPress RSS feeds with modern features, performance optimizations, and SEO improvements. Builds upon WordPress's solid foundation to deliver an even better feed experience for your readers.
  * Version: 1.0.0
  * Author: WeAreIconick
  * Author URI: https://github.com/WeAreIconick

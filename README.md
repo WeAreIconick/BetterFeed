@@ -1,6 +1,6 @@
 # BetterFeed
 
-A comprehensive WordPress plugin that optimizes RSS feeds for performance, SEO, modern standards, and reader compatibility. Implements all the missing features you wish core had.
+A comprehensive WordPress plugin that enhances your RSS feeds with modern features, performance optimizations, and SEO improvements. Builds upon WordPress's excellent foundation to deliver an even better feed experience for your readers.
 
 ## Features
 

@@ -59,9 +59,10 @@ class BF_Performance_Monitor {
         add_action('bf_performance_monitor_cron', array($this, 'run_performance_tests'));
         add_action('bf_performance_cleanup_cron', array($this, 'cleanup_old_data'));
         
-        // Admin hooks
-        add_action('admin_menu', array($this, 'add_admin_menu'));
-        add_action('wp_ajax_bf_run_manual_test', array($this, 'ajax_run_manual_test'));
+        // Admin hooks - now integrated into main BetterFeed settings
+        // add_action('admin_menu', array($this, 'add_admin_menu'));
+        // AJAX hooks removed - using REST API instead
+        // add_action('wp_ajax_bf_run_manual_test', array($this, 'ajax_run_manual_test'));
         
         // Handle cron job activation/deactivation
         register_activation_hook(BF_PLUGIN_FILE, array($this, 'activate_cron'));
@@ -295,8 +296,9 @@ class BF_Performance_Monitor {
                     $alerts[] = array(
                         'type' => 'error',
                         'url' => $result['url'],
+                        // translators: %1$s is the error message
                         'message' => sprintf(
-                            esc_html__('Feed error: %s', 'betterfeed'),
+                            esc_html__('Feed error: %1$s', 'betterfeed'),
                             $scenario_result['error']
                         ),
                         'timestamp' => $result['timestamp']
@@ -305,8 +307,9 @@ class BF_Performance_Monitor {
                     $alerts[] = array(
                         'type' => 'warning',
                         'url' => $result['url'],
+                        // translators: %1$s is the response time in milliseconds
                         'message' => sprintf(
-                            esc_html__('Slow response time: %s ms', 'betterfeed'),
+                            esc_html__('Slow response time: %1$s ms', 'betterfeed'),
                             $scenario_result['response_time']
                         ),
                         'timestamp' => $result['timestamp']
@@ -349,15 +352,19 @@ class BF_Performance_Monitor {
         }
         
         $site_name = get_bloginfo('name');
-        $subject = sprintf(esc_html__('[%s] BetterFeed Performance Alert', 'betterfeed'), $site_name);
+        // translators: %1$s is the site name
+        $subject = sprintf(esc_html__('[%1$s] BetterFeed Performance Alert', 'betterfeed'), $site_name);
         
         $message = esc_html__('BetterFeed Performance Alert', 'betterfeed') . "\n\n";
-        $message .= sprintf(esc_html__('Site: %s', 'betterfeed'), $site_name) . "\n";
-        $message .= sprintf(esc_html__('Time: %s', 'betterfeed'), current_time('Y-m-d H:i:s')) . "\n\n";
+        // translators: %1$s is the site name
+        $message .= sprintf(esc_html__('Site: %1$s', 'betterfeed'), $site_name) . "\n";
+        // translators: %1$s is the current time
+        $message .= sprintf(esc_html__('Time: %1$s', 'betterfeed'), current_time('Y-m-d H:i:s')) . "\n\n";
         
         foreach ($alerts as $alert) {
+            // translators: %1$s is the alert type, %2$s is the URL, %3$s is the message
             $message .= sprintf(
-                esc_html__('[%s] %s: %s', 'betterfeed'),
+                esc_html__('[%1$s] %2$s: %3$s', 'betterfeed'),
                 strtoupper($alert['type']),
                 $alert['url'],
                 $alert['message']
@@ -376,7 +383,7 @@ class BF_Performance_Monitor {
         $performance_history = get_option('bf_performance_history', array());
         
         // Remove data older than 30 days
-        $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'));
+        $cutoff_date = gmdate('Y-m-d H:i:s', strtotime('-30 days'));
         
         foreach ($performance_history as $url => &$results) {
             $results = array_filter($results, function($result) use ($cutoff_date) {
@@ -398,7 +405,7 @@ class BF_Performance_Monitor {
         $daily_stats = $metrics['daily_stats'] ?? array();
         
         // Keep only last 90 days of daily stats
-        $cutoff_date = date('Y-m-d', strtotime('-90 days'));
+        $cutoff_date = gmdate('Y-m-d', strtotime('-90 days'));
         
         $metrics['daily_stats'] = array_filter($daily_stats, function($date) use ($cutoff_date) {
             return $date > $cutoff_date;
@@ -441,7 +448,7 @@ class BF_Performance_Monitor {
                             <div class="bf-status-icon">⏰</div>
                             <div class="bf-status-content">
                                 <h3><?php esc_html_e('Next Test', 'betterfeed'); ?></h3>
-                                <p><?php echo esc_html(wp_next_scheduled('bf_performance_monitor_cron') ? date('Y-m-d H:i:s', wp_next_scheduled('bf_performance_monitor_cron')) : esc_html__('Not scheduled', 'betterfeed')); ?></p>
+                                <p><?php echo esc_html(wp_next_scheduled('bf_performance_monitor_cron') ? gmdate('Y-m-d H:i:s', wp_next_scheduled('bf_performance_monitor_cron')) : esc_html__('Not scheduled', 'betterfeed')); ?></p>
                             </div>
                         </div>
                         
@@ -482,7 +489,7 @@ class BF_Performance_Monitor {
                             <div class="bf-alert-item bf-alert-<?php echo esc_attr($alert['type']); ?>">
                                 <div class="bf-alert-header">
                                     <span class="bf-alert-type"><?php echo esc_html(strtoupper($alert['type'])); ?></span>
-                                    <span class="bf-alert-time"><?php echo esc_html(date('M j, H:i:s', strtotime($alert['timestamp']))); ?></span>
+                                    <span class="bf-alert-time"><?php echo esc_html(gmdate('M j, H:i:s', strtotime($alert['timestamp']))); ?></span>
                                 </div>
                                 <div class="bf-alert-content">
                                     <div class="bf-alert-url"><?php echo esc_html($alert['url']); ?></div>
@@ -536,28 +543,14 @@ class BF_Performance_Monitor {
             </div>
         </div>
         
+        <!-- AJAX JavaScript removed - using REST API instead -->
+        <!-- 
         <script>
         jQuery(document).ready(function($) {
-            $('#bf-run-manual-test').on('click', function() {
-                var button = $(this);
-                button.prop('disabled', true).text('<?php esc_js(__('Running...', 'betterfeed')); ?>');
-                
-                $.post(ajaxurl, {
-                    action: 'bf_run_manual_test',
-                    nonce: '<?php echo esc_js(wp_create_nonce('bf_run_manual_test')); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        alert('<?php esc_js(__('Test completed successfully!', 'betterfeed')); ?>');
-                        location.reload();
-                    } else {
-                        alert('<?php esc_js(__('Test failed. Please try again.', 'betterfeed')); ?>');
-                    }
-                }).always(function() {
-                    button.prop('disabled', false).text('<?php esc_js(__('Run Test Now', 'betterfeed')); ?>');
-                });
-            });
+            // AJAX code commented out - using REST API instead
         });
         </script>
+        -->
         
         <style>
         .bf-monitor {

@@ -143,7 +143,41 @@ else
     TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
-# 4. WordPress Environment Check
+# 4. HTML Structure Validation (NEW!)
+TESTS_RAN=$((TESTS_RAN + 1))
+print_test_header "HTML Structure Validation"
+if [ -f "./developer-tools/testing/validate-html-structure.js" ]; then
+    node ./developer-tools/testing/validate-html-structure.js 2>&1 | tee -a "$RESULTS_LOG"
+    HTML_RESULT=$?
+    print_test_result $HTML_RESULT "HTML Structure Validation"
+    if [ $HTML_RESULT -eq 0 ]; then
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+else
+    echo -e "${RED}❌ HTML structure validator not found${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
+# 5. Nested Forms Test (NEW!)
+TESTS_RAN=$((TESTS_RAN + 1))
+print_test_header "Nested Forms Detection"
+if [ -f "./developer-tools/testing/test-nested-forms.sh" ]; then
+    ./developer-tools/testing/test-nested-forms.sh 2>&1 | tee -a "$RESULTS_LOG"
+    NESTED_FORMS_RESULT=$?
+    print_test_result $NESTED_FORMS_RESULT "Nested Forms Detection"
+    if [ $NESTED_FORMS_RESULT -eq 0 ]; then
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+else
+    echo -e "${RED}❌ Nested forms tester not found${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
+# 6. WordPress Environment Check
 TESTS_RAN=$((TESTS_RAN + 1))
 print_test_header "WordPress Environment Validation"
 if curl -s "$BASE_URL/wp-json/" > /dev/null 2>&1; then

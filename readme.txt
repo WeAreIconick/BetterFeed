@@ -8,11 +8,11 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A comprehensive WordPress plugin that optimizes RSS feeds for performance, SEO, modern standards, and reader compatibility.
+Enhances WordPress RSS feeds with modern features, performance optimizations, and SEO improvements.
 
 == Description ==
 
-BetterFeed enhances WordPress RSS feeds with advanced features that should be built into core. It provides comprehensive optimization for performance, SEO, modern standards, and reader compatibility.
+BetterFeed takes WordPress's already excellent RSS feed system and makes it even better! It adds modern features, performance optimizations, and SEO improvements that enhance your feed experience without changing what already works great.
 
 = Key Features =
 

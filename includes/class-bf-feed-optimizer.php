@@ -128,8 +128,8 @@ class BF_Feed_Optimizer {
             return false;
         }
         
-        $if_modified_since = isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? $_SERVER['HTTP_IF_MODIFIED_SINCE'] : '';
-        $if_none_match = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? $_SERVER['HTTP_IF_NONE_MATCH'] : '';
+        $if_modified_since = isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_IF_MODIFIED_SINCE'])) : '';
+        $if_none_match = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_IF_NONE_MATCH'])) : '';
         
         $modified_match = false;
         $etag_match = false;
@@ -213,7 +213,7 @@ class BF_Feed_Optimizer {
         
         // Check if compression is already handled by server
         if (extension_loaded('zlib') && !ob_get_level() && !headers_sent()) {
-            $accept_encoding = isset($_SERVER['HTTP_ACCEPT_ENCODING']) ? $_SERVER['HTTP_ACCEPT_ENCODING'] : '';
+            $accept_encoding = isset($_SERVER['HTTP_ACCEPT_ENCODING']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT_ENCODING'])) : '';
             
             if (strpos($accept_encoding, 'gzip') !== false) {
                 ob_start('ob_gzhandler');
@@ -227,16 +227,17 @@ class BF_Feed_Optimizer {
      * Get feed last modified timestamp
      */
     private function get_feed_last_modified() {
-        global $wpdb;
+        // Use WordPress query instead of direct DB query
+        $latest_posts = get_posts(array(
+            'post_status' => 'publish',
+            'post_type' => array('post', 'page'),
+            'posts_per_page' => 1,
+            'orderby' => 'modified',
+            'order' => 'DESC',
+            'fields' => 'ids'
+        ));
         
-        $last_post = $wpdb->get_var("
-            SELECT post_modified_gmt 
-            FROM {$wpdb->posts} 
-            WHERE post_status = 'publish' 
-            AND post_type IN ('post', 'page')
-            ORDER BY post_modified_gmt DESC 
-            LIMIT 1
-        ");
+        $last_post = !empty($latest_posts) ? get_post_field('post_modified_gmt', $latest_posts[0]) : false;
         
         if ($last_post) {
             return gmdate('D, d M Y H:i:s', strtotime($last_post)) . ' GMT';

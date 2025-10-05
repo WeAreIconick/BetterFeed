@@ -54,10 +54,11 @@ class BF_Optimizer_Suggestions {
             return;
         }
         
-        // Admin hooks
-        add_action('admin_menu', array($this, 'add_admin_menu'));
-        add_action('wp_ajax_bf_run_optimization_scan', array($this, 'ajax_run_optimization_scan'));
-        add_action('wp_ajax_bf_apply_suggestion', array($this, 'ajax_apply_suggestion'));
+        // Admin hooks - now integrated into main BetterFeed settings
+        // add_action('admin_menu', array($this, 'add_admin_menu'));
+        // AJAX hooks removed - using REST API instead
+        // add_action('wp_ajax_bf_run_optimization_scan', array($this, 'ajax_run_optimization_scan'));
+        // add_action('wp_ajax_bf_apply_suggestion', array($this, 'ajax_apply_suggestion'));
         
         // Run suggestions on admin init
         add_action('admin_init', array($this, 'run_optimization_check'));
@@ -68,7 +69,8 @@ class BF_Optimizer_Suggestions {
      */
     public function run_optimization_check() {
         // Only run on BetterFeed admin pages
-        if (!isset($_GET['page']) || strpos($_GET['page'], 'bf-') !== 0) {
+        // Note: This is not processing form data, just checking page parameter for context
+        if (!isset($_GET['page']) || strpos(sanitize_text_field(wp_unslash($_GET['page'])), 'bf-') !== 0) {
             return;
         }
         
@@ -155,6 +157,7 @@ class BF_Optimizer_Suggestions {
                 'type' => 'performance',
                 'priority' => 'medium',
                 'title' => esc_html__('Reduce Feed Item Count', 'betterfeed'),
+                // translators: %d is the current number of posts per RSS feed
                 'description' => sprintf(esc_html__('Your feed currently shows %d items. Consider reducing to 10-15 items for better performance.', 'betterfeed'), $posts_per_rss),
                 'action' => 'update_option',
                 'setting' => 'posts_per_rss',
@@ -171,6 +174,7 @@ class BF_Optimizer_Suggestions {
                 'type' => 'content',
                 'priority' => 'medium',
                 'title' => esc_html__('Optimize Large Images', 'betterfeed'),
+                // translators: %d is the number of posts with large images
                 'description' => sprintf(esc_html__('Found %d posts with large featured images that may slow down feed loading.', 'betterfeed'), count($large_images)),
                 'action' => 'show_details',
                 'details' => $large_images,
@@ -186,6 +190,7 @@ class BF_Optimizer_Suggestions {
                 'type' => 'content',
                 'priority' => 'high',
                 'title' => esc_html__('Fix Broken Enclosures', 'betterfeed'),
+                // translators: %d is the number of posts with broken enclosures
                 'description' => sprintf(esc_html__('Found %d posts with broken or missing enclosures.', 'betterfeed'), count($broken_enclosures)),
                 'action' => 'show_details',
                 'details' => $broken_enclosures,
@@ -201,6 +206,7 @@ class BF_Optimizer_Suggestions {
                 'type' => 'content',
                 'priority' => 'low',
                 'title' => esc_html__('Add Featured Images', 'betterfeed'),
+                // translators: %d is the number of posts without featured images
                 'description' => sprintf(esc_html__('Found %d posts without featured images. Featured images improve feed appearance.', 'betterfeed'), count($missing_images)),
                 'action' => 'show_details',
                 'details' => $missing_images,
@@ -245,16 +251,25 @@ class BF_Optimizer_Suggestions {
      * Check for large images
      */
     private function check_large_images() {
-        $posts = get_posts(array(
-            'numberposts' => 50,
-            'post_status' => 'publish',
-            'meta_query' => array(
-                array(
-                    'key' => '_thumbnail_id',
-                    'compare' => 'EXISTS'
+        // Check cache first to avoid slow queries
+        $cache_key = 'bf_posts_with_images_' . get_current_blog_id();
+        $posts = wp_cache_get($cache_key, 'betterfeed');
+        
+        if (false === $posts) {
+            $posts = get_posts(array(
+                'numberposts' => 50,
+                'post_status' => 'publish',
+                'meta_query' => array(
+                    array(
+                        'key' => '_thumbnail_id',
+                        'compare' => 'EXISTS'
+                    )
                 )
-            )
-        ));
+            ));
+            
+            // Cache for 1 hour
+            wp_cache_set($cache_key, $posts, 'betterfeed', HOUR_IN_SECONDS);
+        }
         
         $large_images = array();
         
@@ -281,16 +296,25 @@ class BF_Optimizer_Suggestions {
      * Check for broken enclosures
      */
     private function check_broken_enclosures() {
-        $posts = get_posts(array(
-            'numberposts' => 100,
-            'post_status' => 'publish',
-            'meta_query' => array(
-                array(
-                    'key' => 'episode_audio_url',
-                    'compare' => 'EXISTS'
+        // Check cache first to avoid slow queries
+        $cache_key = 'bf_posts_with_enclosures_' . get_current_blog_id();
+        $posts = wp_cache_get($cache_key, 'betterfeed');
+        
+        if (false === $posts) {
+            $posts = get_posts(array(
+                'numberposts' => 100,
+                'post_status' => 'publish',
+                'meta_query' => array(
+                    array(
+                        'key' => 'episode_audio_url',
+                        'compare' => 'EXISTS'
+                    )
                 )
-            )
-        ));
+            ));
+            
+            // Cache for 1 hour
+            wp_cache_set($cache_key, $posts, 'betterfeed', HOUR_IN_SECONDS);
+        }
         
         $broken_enclosures = array();
         
@@ -328,16 +352,25 @@ class BF_Optimizer_Suggestions {
      * Check for missing featured images
      */
     private function check_missing_featured_images() {
-        $posts = get_posts(array(
-            'numberposts' => 50,
-            'post_status' => 'publish',
-            'meta_query' => array(
-                array(
-                    'key' => '_thumbnail_id',
-                    'compare' => 'NOT EXISTS'
+        // Check cache first to avoid slow queries
+        $cache_key = 'bf_posts_without_images_' . get_current_blog_id();
+        $posts = wp_cache_get($cache_key, 'betterfeed');
+        
+        if (false === $posts) {
+            $posts = get_posts(array(
+                'numberposts' => 50,
+                'post_status' => 'publish',
+                'meta_query' => array(
+                    array(
+                        'key' => '_thumbnail_id',
+                        'compare' => 'NOT EXISTS'
+                    )
                 )
-            )
-        ));
+            ));
+            
+            // Cache for 1 hour
+            wp_cache_set($cache_key, $posts, 'betterfeed', HOUR_IN_SECONDS);
+        }
         
         $missing_images = array();
         
@@ -466,60 +499,14 @@ class BF_Optimizer_Suggestions {
             </div>
         </div>
         
+        <!-- AJAX JavaScript removed - using REST API instead -->
+        <!-- 
         <script>
         jQuery(document).ready(function($) {
-            $('#bf-run-scan').on('click', function() {
-                var button = $(this);
-                button.prop('disabled', true).text('<?php esc_js(__('Scanning...', 'betterfeed')); ?>');
-                
-                $.post(ajaxurl, {
-                    action: 'bf_run_optimization_scan',
-                    nonce: '<?php echo esc_js(wp_create_nonce('bf_run_optimization_scan')); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert('<?php esc_js(__('Scan failed. Please try again.', 'betterfeed')); ?>');
-                    }
-                }).always(function() {
-                    button.prop('disabled', false).text('<?php esc_js(__('Run New Scan', 'betterfeed')); ?>');
-                });
-            });
-            
-            $('#bf-apply-all').on('click', function() {
-                if (confirm('<?php esc_js(__('Apply all high priority suggestions? This will modify your settings.', 'betterfeed')); ?>')) {
-                    $('.bf-suggestion-item[data-priority="high"] .bf-apply-btn').each(function() {
-                        if (!$(this).prop('disabled')) {
-                            $(this).click();
-                        }
-                    });
-                }
-            });
-            
-            $('.bf-apply-btn').on('click', function() {
-                var button = $(this);
-                var suggestionId = button.data('suggestion-id');
-                
-                button.prop('disabled', true).text('<?php esc_js(__('Applying...', 'betterfeed')); ?>');
-                
-                $.post(ajaxurl, {
-                    action: 'bf_apply_suggestion',
-                    suggestion_id: suggestionId,
-                    nonce: '<?php echo esc_js(wp_create_nonce('bf_apply_suggestion')); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        button.text('<?php esc_js(__('Applied', 'betterfeed')); ?>').addClass('applied');
-                        setTimeout(function() {
-                            button.closest('.bf-suggestion-item').fadeOut();
-                        }, 1000);
-                    } else {
-                        alert('<?php esc_js(__('Failed to apply suggestion.', 'betterfeed')); ?>');
-                        button.prop('disabled', false).text('<?php esc_js(__('Apply', 'betterfeed')); ?>');
-                    }
-                });
-            });
+            // AJAX code commented out - using REST API instead
         });
         </script>
+        -->
         
         <style>
         .bf-suggestions {
@@ -773,7 +760,9 @@ class BF_Optimizer_Suggestions {
                 <?php endforeach; ?>
                 
                 <?php if (count($suggestion['details']) > 10): ?>
-                    <p><em><?php printf(esc_html__('... and %d more items', 'betterfeed'), count($suggestion['details']) - 10); ?></em></p>
+                    <p><em><?php 
+                    // translators: %d is the number of additional items not shown
+                    printf(esc_html__('... and %d more items', 'betterfeed'), count($suggestion['details']) - 10); ?></em></p>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
@@ -815,7 +804,7 @@ class BF_Optimizer_Suggestions {
     public function ajax_apply_suggestion() {
         check_ajax_referer('bf_apply_suggestion', 'nonce');
         
-        $suggestion_id = sanitize_text_field($_POST['suggestion_id']);
+        $suggestion_id = isset($_POST['suggestion_id']) ? sanitize_text_field(wp_unslash($_POST['suggestion_id'])) : '';
         $suggestions = get_option('bf_optimization_suggestions', array());
         
         foreach ($suggestions as $index => $suggestion) {

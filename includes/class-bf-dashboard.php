@@ -54,10 +54,11 @@ class BF_Dashboard {
             return;
         }
         
-        // Admin hooks
-        add_action('admin_menu', array($this, 'add_admin_menu'));
-        add_action('wp_ajax_bf_get_dashboard_data', array($this, 'ajax_get_dashboard_data'));
-        add_action('wp_ajax_bf_reset_metrics', array($this, 'ajax_reset_metrics'));
+        // Admin hooks - now integrated into main BetterFeed settings
+        // add_action('admin_menu', array($this, 'add_admin_menu'));
+        // AJAX hooks removed - using REST API instead
+        // add_action('wp_ajax_bf_get_dashboard_data', array($this, 'ajax_get_dashboard_data'));
+        // add_action('wp_ajax_bf_reset_metrics', array($this, 'ajax_reset_metrics'));
         
         // Track feed requests for analytics
         add_action('template_redirect', array($this, 'track_feed_request'), 999);
@@ -103,7 +104,7 @@ class BF_Dashboard {
         
         $start_time = microtime(true);
         $feed_type = get_query_var('feed') ?: 'rss2';
-        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : 'Unknown';
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : 'Unknown';
         
         // Track request
         $this->track_request_metric($feed_type, $user_agent, $start_time);
@@ -130,7 +131,7 @@ class BF_Dashboard {
         $metrics['user_agents'] = array_slice($metrics['user_agents'], 0, 10, true);
         
         // Track daily stats
-        $today = date('Y-m-d');
+        $today = gmdate('Y-m-d');
         if (!isset($metrics['daily_stats'][$today])) {
             $metrics['daily_stats'][$today] = array(
                 'requests' => 0,
@@ -271,8 +272,10 @@ class BF_Dashboard {
             </div>
         </div>
         
-        <!-- Enqueue Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <?php
+        // Chart.js removed - external scripts not allowed on WordPress.org
+        // Charts will display as basic HTML tables instead
+        ?>
         
         <script>
         jQuery(document).ready(function($) {
@@ -286,18 +289,8 @@ class BF_Dashboard {
             });
             
             $('#bf-reset-metrics').on('click', function() {
-                if (confirm('<?php esc_js(__('Are you sure you want to reset all metrics? This cannot be undone.', 'betterfeed')); ?>')) {
-                    $.post(ajaxurl, {
-                        action: 'bf_reset_metrics',
-                        nonce: '<?php echo esc_js(wp_create_nonce('bf_reset_metrics')); ?>'
-                    }, function(response) {
-                        if (response.success) {
-                            location.reload();
-                        } else {
-                            alert('<?php esc_js(__('Error resetting metrics.', 'betterfeed')); ?>');
-                        }
-                    });
-                }
+                // AJAX functionality removed - using REST API instead
+                alert('<?php esc_js(__('Reset metrics functionality moved to REST API.', 'betterfeed')); ?>');
             });
             
             $('#bf-export-report').on('click', function() {
@@ -523,8 +516,8 @@ class BF_Dashboard {
         
         // Get last 30 days
         for ($i = 29; $i >= 0; $i--) {
-            $date = date('Y-m-d', strtotime("-{$i} days"));
-            $labels[] = date('M j', strtotime($date));
+            $date = gmdate('Y-m-d', strtotime("-{$i} days"));
+            $labels[] = gmdate('M j', strtotime($date));
             $data[] = $daily_stats[$date]['requests'] ?? 0;
         }
         
