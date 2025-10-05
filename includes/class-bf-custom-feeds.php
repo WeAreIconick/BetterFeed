@@ -204,6 +204,7 @@ class BF_Custom_Feeds {
         
         // Custom taxonomies
         if (!empty($config['taxonomies'])) {
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- Query is cached for 15 minutes
             $tax_query = array('relation' => 'AND');
             
             foreach ($config['taxonomies'] as $taxonomy => $terms) {

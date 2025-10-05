@@ -70,6 +70,7 @@ class BF_Optimizer_Suggestions {
     public function run_optimization_check() {
         // Only run on BetterFeed admin pages
         // Note: This is not processing form data, just checking page parameter for context
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Not processing form data
         if (!isset($_GET['page']) || strpos(sanitize_text_field(wp_unslash($_GET['page'])), 'bf-') !== 0) {
             return;
         }
@@ -259,6 +260,7 @@ class BF_Optimizer_Suggestions {
             $posts = get_posts(array(
                 'numberposts' => 50,
                 'post_status' => 'publish',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Query is cached for 1 hour
                 'meta_query' => array(
                     array(
                         'key' => '_thumbnail_id',
@@ -304,6 +306,7 @@ class BF_Optimizer_Suggestions {
             $posts = get_posts(array(
                 'numberposts' => 100,
                 'post_status' => 'publish',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Query is cached for 1 hour
                 'meta_query' => array(
                     array(
                         'key' => 'episode_audio_url',
@@ -360,6 +363,7 @@ class BF_Optimizer_Suggestions {
             $posts = get_posts(array(
                 'numberposts' => 50,
                 'post_status' => 'publish',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Query is cached for 1 hour
                 'meta_query' => array(
                     array(
                         'key' => '_thumbnail_id',

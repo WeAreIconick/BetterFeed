@@ -496,10 +496,19 @@ class BF_Redirects {
             $test_url = home_url('/feed/');
             $matches = $this->url_matches($test_url, $redirect['from']);
             
-            // translators: %1$s is the redirect pattern, %2$s is the test URL
             $message = $matches 
-                ? sprintf(esc_html__('Redirect pattern "%1$s" matches test URL "%2$s"', 'betterfeed'), $redirect['from'], $test_url)
-                : sprintf(esc_html__('Redirect pattern "%1$s" does not match test URL "%2$s"', 'betterfeed'), $redirect['from'], $test_url);
+                ? sprintf(
+                    // translators: %1$s is the redirect pattern, %2$s is the test URL
+                    esc_html__('Redirect pattern "%1$s" matches test URL "%2$s"', 'betterfeed'), 
+                    $redirect['from'], 
+                    $test_url
+                )
+                : sprintf(
+                    // translators: %1$s is the redirect pattern, %2$s is the test URL
+                    esc_html__('Redirect pattern "%1$s" does not match test URL "%2$s"', 'betterfeed'), 
+                    $redirect['from'], 
+                    $test_url
+                );
             
             add_action('admin_notices', function() use ($message) {
                 echo '<div class="notice notice-info is-dismissible"><p>' . esc_html($message) . '</p></div>';
