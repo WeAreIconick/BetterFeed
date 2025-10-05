@@ -238,6 +238,16 @@
 - **NO TODO comments for user features** - implement or remove
 - **NO placeholder functions** - all onclick handlers must work
 
+## User-Facing Feature Validation Rules
+- **NO INCOMPLETE FEATURES IN UI** - if a button exists, it must work completely
+- **FEATURE COMPLETENESS CHECK** - every onclick handler must have a corresponding JavaScript function
+- **REST API ENDPOINT VALIDATION** - every API call must have a working endpoint
+- **BACKEND FUNCTIONALITY REQUIRED** - every feature must have complete backend implementation
+- **TEST BEFORE DEPLOYMENT** - manually test every button and interaction
+- **REMOVE BROKEN FEATURES** - if something doesn't work, remove it from the UI immediately
+- **NO "COMING SOON" FEATURES** - either implement fully or don't show to users
+- **COMPREHENSIVE TESTING** - every user-facing feature must be tested end-to-end
+
 ---
 
 **Usage**: Copy this framework to new WordPress projects and customize for project-specific needs.

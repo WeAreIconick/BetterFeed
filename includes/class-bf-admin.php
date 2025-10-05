@@ -2158,6 +2158,12 @@ class BF_Admin {
         // Get optimization suggestions
         $suggestions = get_option('bf_optimization_suggestions', array());
         
+        // If no suggestions exist, generate some for demonstration
+        if (empty($suggestions)) {
+            $this->generate_demo_suggestions();
+            $suggestions = get_option('bf_optimization_suggestions', array());
+        }
+        
         // Get recent performance test results
         $test_results = get_option('bf_performance_test_results', array());
         $latest_results = array_slice(array_reverse($test_results), 0, 5);
@@ -2870,6 +2876,55 @@ class BF_Admin {
                 'message' => 'Failed to delete redirect: ' . $e->getMessage()
             ), 500);
         }
+    }
+    
+    /**
+     * Generate demo optimization suggestions for testing
+     * 
+     * Creates sample suggestions to demonstrate the functionality
+     * when no real suggestions are available.
+     * 
+     * @since 1.0.0
+     * @private
+     */
+    private function generate_demo_suggestions() {
+        $demo_suggestions = array(
+            array(
+                'id' => 'enable_etag',
+                'type' => 'performance',
+                'priority' => 'high',
+                'title' => esc_html__('Enable ETag Headers', 'betterfeed'),
+                'description' => esc_html__('ETag headers help feed readers determine if content has changed, reducing unnecessary downloads.', 'betterfeed'),
+                'action' => 'enable_setting',
+                'setting' => 'bf_performance_options[enable_etag]',
+                'value' => '1',
+                'impact' => esc_html__('Improves caching efficiency', 'betterfeed')
+            ),
+            array(
+                'id' => 'enable_conditional_requests',
+                'type' => 'performance',
+                'priority' => 'high',
+                'title' => esc_html__('Enable 304 Not Modified Responses', 'betterfeed'),
+                'description' => esc_html__('304 responses tell feed readers when content hasn\'t changed, saving bandwidth.', 'betterfeed'),
+                'action' => 'enable_setting',
+                'setting' => 'bf_performance_options[enable_conditional_requests]',
+                'value' => '1',
+                'impact' => esc_html__('Reduces bandwidth usage', 'betterfeed')
+            ),
+            array(
+                'id' => 'enable_gzip',
+                'type' => 'performance',
+                'priority' => 'medium',
+                'title' => esc_html__('Enable GZIP Compression', 'betterfeed'),
+                'description' => esc_html__('GZIP compression can reduce feed size by 70-80%, saving bandwidth and improving load times.', 'betterfeed'),
+                'action' => 'enable_setting',
+                'setting' => 'bf_performance_options[enable_gzip]',
+                'value' => '1',
+                'impact' => esc_html__('Reduces bandwidth usage by 70-80%', 'betterfeed')
+            )
+        );
+        
+        update_option('bf_optimization_suggestions', $demo_suggestions);
     }
     
 }

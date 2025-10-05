@@ -748,4 +748,138 @@ document.addEventListener('DOMContentLoaded', function() {
             applySuggestion(e.target.dataset.suggestionId);
         }
     });
+    
+    // Handle Run New Scan button
+    const runScanBtn = document.getElementById('bf-run-scan');
+    if (runScanBtn) {
+        runScanBtn.addEventListener('click', function() {
+            runOptimizationScan();
+        });
+    }
+    
+    // Handle Apply All High Priority button
+    const applyAllBtn = document.getElementById('bf-apply-all');
+    if (applyAllBtn) {
+        applyAllBtn.addEventListener('click', function() {
+            applyAllHighPrioritySuggestions();
+        });
+    }
 });
+
+/**
+ * Run optimization scan to generate new suggestions
+ * 
+ * Triggers a new optimization scan to generate fresh suggestions
+ * based on current site configuration.
+ * 
+ * @since 1.0.0
+ */
+function runOptimizationScan() {
+    const button = document.getElementById('bf-run-scan');
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Scanning...';
+    }
+    
+    fetchWithErrorHandling('generate-optimization-report', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-WP-Nonce': bf_admin.nonce
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            showAdminNotice('Optimization scan completed! New suggestions generated.', 'success');
+            // Reload the page to show new suggestions
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showAdminNotice(data.message || 'Failed to run optimization scan', 'error');
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Run New Scan';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('BetterFeed: Run scan error:', error);
+        showAdminNotice('Failed to run optimization scan: ' + error.message, 'error');
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Run New Scan';
+        }
+    });
+}
+
+/**
+ * Apply all high priority suggestions
+ * 
+ * Automatically applies all high priority optimization suggestions.
+ * 
+ * @since 1.0.0
+ */
+function applyAllHighPrioritySuggestions() {
+    const button = document.getElementById('bf-apply-all');
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Applying...';
+    }
+    
+    // Get all high priority suggestion buttons
+    const highPriorityButtons = document.querySelectorAll('.bf-suggestion-item[data-priority="high"] .bf-apply-btn');
+    
+    if (highPriorityButtons.length === 0) {
+        showAdminNotice('No high priority suggestions found to apply.', 'info');
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Apply All High Priority';
+        }
+        return;
+    }
+    
+    let completed = 0;
+    let total = highPriorityButtons.length;
+    
+    highPriorityButtons.forEach(function(btn) {
+        const suggestionId = btn.dataset.suggestionId;
+        if (suggestionId) {
+            fetchWithErrorHandling('apply-suggestion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': bf_admin.nonce
+                },
+                body: JSON.stringify({
+                    suggestion_id: suggestionId
+                })
+            })
+            .then(data => {
+                completed++;
+                if (completed === total) {
+                    showAdminNotice(`Successfully applied ${total} high priority suggestions!`, 'success');
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = 'Apply All High Priority';
+                    }
+                    // Reload to show updated state
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                }
+            })
+            .catch(error => {
+                console.error('BetterFeed: Apply all error:', error);
+                completed++;
+                if (completed === total) {
+                    showAdminNotice('Some suggestions may have failed to apply. Please check individual suggestions.', 'warning');
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = 'Apply All High Priority';
+                    }
+                }
+            });
+        }
+    });
+}

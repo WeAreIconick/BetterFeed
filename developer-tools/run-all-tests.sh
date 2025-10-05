@@ -227,6 +227,23 @@ else
     TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
+# 6. Feature Completeness Validation (NEW!)
+TESTS_RAN=$((TESTS_RAN + 1))
+print_test_header "Feature Completeness Validation"
+if [ -f "./developer-tools/testing/validate-feature-completeness.js" ]; then
+    node ./developer-tools/testing/validate-feature-completeness.js 2>&1 | tee -a "$RESULTS_LOG"
+    FEATURE_RESULT=$?
+    print_test_result $FEATURE_RESULT "Feature Completeness"
+    if [ $FEATURE_RESULT -eq 0 ]; then
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+else
+    echo -e "${RED}❌ Feature completeness validator not found${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
 echo "----------------------------------------" >> "$RESULTS_LOG"
 echo "Test Summary:" >> "$RESULTS_LOG"
 echo "Total Tests: $TESTS_RAN" >> "$RESULTS_LOG"
