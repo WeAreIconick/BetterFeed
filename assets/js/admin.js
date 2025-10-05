@@ -677,3 +677,75 @@ function deleteRedirect(redirectIndex) {
         });
     }
 }
+
+/**
+ * Apply optimization suggestion
+ * 
+ * Handles applying optimization suggestions from the dashboard.
+ * Sends the suggestion ID to the REST API endpoint for processing.
+ * 
+ * @since 1.0.0
+ * 
+ * @param {string} suggestionId - The ID of the suggestion to apply
+ * 
+ * @example
+ * applySuggestion('enable_etag');
+ */
+function applySuggestion(suggestionId) {
+    if (!suggestionId) {
+        showAdminNotice('Invalid suggestion ID', 'error');
+        return;
+    }
+    
+    const button = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Applying...';
+    }
+    
+    fetchWithErrorHandling('apply-suggestion', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-WP-Nonce': bf_admin.nonce
+        },
+        body: JSON.stringify({
+            suggestion_id: suggestionId
+        })
+    })
+    .then(data => {
+        if (data.success) {
+            showAdminNotice(data.message || 'Suggestion applied successfully!', 'success');
+            if (button) {
+                button.textContent = 'Applied';
+                button.classList.add('applied');
+                button.disabled = true;
+            }
+        } else {
+            showAdminNotice(data.message || 'Failed to apply suggestion', 'error');
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Apply';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('BetterFeed: Apply suggestion error:', error);
+        showAdminNotice('Failed to apply suggestion: ' + error.message, 'error');
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Apply';
+        }
+    });
+}
+
+// Initialize suggestion button handlers when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle suggestion Apply button clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('bf-apply-btn') && e.target.dataset.suggestionId) {
+            e.preventDefault();
+            applySuggestion(e.target.dataset.suggestionId);
+        }
+    });
+});
