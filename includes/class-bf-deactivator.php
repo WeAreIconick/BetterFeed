@@ -55,6 +55,17 @@ class BF_Deactivator {
         if ($timestamp) {
             wp_unschedule_event($timestamp, 'bf_analytics_cleanup');
         }
+        
+        // Clear performance monitor cron jobs
+        $timestamp = wp_next_scheduled('bf_performance_monitor_cron');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'bf_performance_monitor_cron');
+        }
+        
+        $timestamp = wp_next_scheduled('bf_performance_cleanup_cron');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'bf_performance_cleanup_cron');
+        }
     }
     
     /**

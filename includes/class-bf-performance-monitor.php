@@ -64,9 +64,7 @@ class BF_Performance_Monitor {
         // AJAX hooks removed - using REST API instead
         // add_action('wp_ajax_bf_run_manual_test', array($this, 'ajax_run_manual_test'));
         
-        // Handle cron job activation/deactivation
-        register_activation_hook(BF_PLUGIN_FILE, array($this, 'activate_cron'));
-        register_deactivation_hook(BF_PLUGIN_FILE, array($this, 'deactivate_cron'));
+        // Cron job activation/deactivation handled by main plugin activator
     }
     
     /**

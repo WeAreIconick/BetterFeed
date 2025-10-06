@@ -31,6 +31,9 @@ class BF_Activator {
         // Flush rewrite rules
         flush_rewrite_rules();
         
+        // Initialize performance monitor cron jobs
+        self::init_performance_monitor_cron();
+        
         // Set activation flag
         update_option('bf_activated', true);
         
@@ -120,5 +123,22 @@ class BF_Activator {
         
         // Set version option
         add_option('bf_version', BF_VERSION);
+    }
+    
+    /**
+     * Initialize performance monitor cron jobs
+     * 
+     * @since 1.0.0
+     */
+    private static function init_performance_monitor_cron() {
+        // Schedule performance monitoring cron job
+        if (!wp_next_scheduled('bf_performance_monitor_cron')) {
+            wp_schedule_event(time(), 'hourly', 'bf_performance_monitor_cron');
+        }
+        
+        // Schedule cleanup cron job
+        if (!wp_next_scheduled('bf_performance_cleanup_cron')) {
+            wp_schedule_event(time(), 'daily', 'bf_performance_cleanup_cron');
+        }
     }
 }
